@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>TRMNL WebKit Device</title>
+    <link rel="manifest" href="https://usetrmnl.com/mirror/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <link
+      rel="apple-touch-icon"
+      type="image/png"
+      href="https://usetrmnl.com/mirror/favicons/apple-touch-icon-76x76.png"
+      sizes="76x76"
+    />
+    <link
+      rel="apple-touch-icon"
+      type="image/png"
+      href="https://usetrmnl.com/mirror/favicons/apple-touch-icon-120x120.png"
+      sizes="120x120"
+    />
+    <link
+      rel="apple-touch-icon"
+      type="image/png"
+      href="https://usetrmnl.com/mirror/favicons/apple-touch-icon-152x152.png"
+      sizes="152x152"
+    />
+    <link
+      rel="apple-touch-icon"
+      type="image/png"
+      href="https://usetrmnl.com/mirror/favicons/apple-touch-icon-167x167.png"
+      sizes="167x167"
+    />
+    <link
+      rel="apple-touch-icon"
+      type="image/png"
+      href="https://usetrmnl.com/mirror/favicons/apple-touch-icon-180x180.png"
+      sizes="180x180"
+    />
+
+    <link
+      rel="icon"
+      type="image/png"
+      href="https://usetrmnl.com/mirror/favicons/favicon-16x16.png"
+      sizes="16x16"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="https://usetrmnl.com/mirror/favicons/favicon-32x32.png"
+      sizes="32x32"
+    />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <script>
+      const trmnl = {
+        refreshTimer: null,
+        ui: {},
+
+        showStatus(message) {
+          trmnl.ui.img.style.display = "none";
+          trmnl.ui.errorContainer.style.display = "flex";
+          trmnl.ui.errorMessage.textContent = message;
+        },
+
+        showScreen(src) {
+          trmnl.ui.img.src = src;
+          trmnl.ui.img.style.display = "block";
+          trmnl.ui.errorContainer.style.display = "none";
+        },
+
+        showSetupForm() {
+          const data = trmnl.getSettings();
+          trmnl.ui.macAddressInput.value = data.macAddress || "";
+          //trmnl.ui.apiKeyInput.value = data.api_key || "";
+          trmnl.ui.baseURLInput.value = data.base_url || location.origin;
+
+          trmnl.ui.baseURLDetails.open = !!data.base_url;
+
+          trmnl.ui.setup.style.display = "flex";
+        },
+
+        saveSetup(event) {
+          event.preventDefault();
+
+          const macAddress = trmnl.ui.macAddressInput.value;
+          //const apiKey = trmnl.ui.apiKeyInput.value;
+          const baseURL = trmnl.ui.baseURLInput.value;
+
+          if (!macAddress) {
+            return;
+          }
+
+          trmnl.setupDevice({
+            macAddress: macAddress,
+            base_url: baseURL,
+          });
+
+          trmnl.fetchDisplay();
+        },
+
+        hideSetupForm() {
+          trmnl.ui.setup.style.display = "none";
+        },
+
+        async setupDevice(opts = {}) {
+          clearTimeout(trmnl.refreshTimer);
+
+          const macAddress = opts.macAddress;
+          const baseURL = opts.base_url || "https://usetrmnl.com";
+
+          const headers = { "ID": macAddress, "Model": "webkit", "FW-Version": "1.8.6" };
+
+          try {
+            const response = await fetch(`${baseURL}/api/setup`, {
+              method: "GET",
+              headers,
+            });
+
+            if (!response.ok) {
+              trmnl.showStatus(
+                `Failed to fetch screen: ${response.status} ${response.statusText}`
+              );
+              return;
+            }
+
+            const data = await response.json();
+            console.log("Display response:", data);
+
+            if (data.status !== 200) {
+              trmnl.showStatus(
+                `Error: ${data.error || data.message || data.status}`
+              );
+              return;
+            }
+
+            data.macAddress = opts.macAddress;
+            data.base_url = opts.base_url;
+            trmnl.saveSettings(data);
+          } catch (error) {
+            trmnl.showStatus("Network error: " + error.message);
+          }
+        },
+
+        async fetchDisplay(opts = {}) {
+          clearTimeout(trmnl.refreshTimer);
+
+          if (!opts.quiet) {
+            trmnl.hideSetupForm();
+            trmnl.showStatus("Loading...");
+          }
+
+          const setup = trmnl.getSettings();
+          const apiKey = setup.api_key;
+          const baseURL = setup.base_url || "https://usetrmnl.com";
+
+          const headers = { "Access-Token": apiKey };
+
+          try {
+            const response = await fetch(`${baseURL}/api/display`, {
+              method: "GET",
+              headers,
+            });
+
+            if (!response.ok) {
+              trmnl.showStatus(
+                `Failed to fetch screen: ${response.status} ${response.statusText}`
+              );
+              return;
+            }
+
+            const data = await response.json();
+            console.log("Display response:", data);
+
+            if (data.status !== 0) {
+              trmnl.showStatus(
+                `Error: ${data.error || data.message || data.status}`
+              );
+              return;
+            }
+
+            trmnl.showScreen(data.image_url);
+
+            if (data.refresh_rate) {
+              let refreshRate = 30;
+
+              if (data.rendered_at) {
+                const renderedAt = new Date(data.rendered_at);
+                const now = new Date();
+                const elapsedSeconds = Math.floor((now - renderedAt) / 1000);
+
+                if (elapsedSeconds < data.refresh_rate) {
+                  refreshRate = data.refresh_rate - elapsedSeconds + 5; // add 5 seconds to ensure the device triggers api/display first
+                }
+              }
+
+              console.log(`Refreshing in ${refreshRate} seconds...`);
+              trmnl.refreshTimer = setTimeout(
+                () => trmnl.fetchDisplay({ quiet: true }),
+                1000 * refreshRate
+              );
+            }
+          } catch (error) {
+            trmnl.showStatus("Network error: " + error.message);
+          }
+        },
+
+        getSettings() {
+          return JSON.parse(localStorage.getItem("settings")) || {};
+        },
+
+        saveSettings(data) {
+          const settings = trmnl.getSettings();
+          Object.assign(settings, data);
+          localStorage.setItem("settings", JSON.stringify(settings));
+          console.log("Settings saved:", settings);
+        },
+
+        init() {
+          isWebKit = /AppleWebKit/.test(navigator.userAgent);
+          //console.log({userAgent: navigator.userAgent, isWebKit});
+          // screen
+          trmnl.ui.img = document.getElementById("screen");
+          trmnl.ui.errorContainer = document.getElementById("error-container");
+          trmnl.ui.errorMessage = document.getElementById("error-message");
+
+          // settings
+          trmnl.ui.macAddressInput = document.getElementById("macAddress");
+          //trmnl.ui.apiKeyInput = document.getElementById("api_key");
+          trmnl.ui.baseURLInput = document.getElementById("base_url");
+          trmnl.ui.setup = document.getElementById("setup");
+          trmnl.ui.baseURLDetails = document.getElementById(
+            "custom_server_details"
+          );
+
+          const settings = trmnl.getSettings();
+          if (!settings || !settings.api_key) {
+            trmnl.showSetupForm();
+          } else {
+            trmnl.fetchDisplay();
+          }
+        },
+      };
+
+      document.addEventListener("DOMContentLoaded", () => {
+        trmnl.init();
+      });
+    </script>
+    <style>
+      body {
+        overflow: hidden;
+        font-family: sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+
+      a {
+        color: #f8654b;
+      }
+
+      #screen-container,
+      #setup {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 2em;
+        overflow-y: scroll;
+      }
+
+      #setup {
+        background-color: #3d3d3e;
+      }
+
+      #setup-panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2em;
+        background-color: #ffffff;
+        padding: 2em;
+        border-radius: 1em;
+        box-shadow: 0 0.5em 2em rgba(0, 0, 0, 1);
+      }
+
+      #screen {
+        cursor: pointer;
+        width: 100vw;
+        height: 100vh;
+        object-fit: contain;
+        background-color: white;
+        z-index: 1;
+      }
+
+      #error-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+
+      #error-message {
+        font-size: 1.5em;
+        margin-bottom: 1em;
+      }
+
+      #setup {
+        z-index: 2;
+      }
+
+      .form-control {
+        font-size: 1.25em;
+        width: 14em;
+        padding: 0.5em;
+        border: 1px solid #ccc;
+        border-radius: 0.5em;
+        display: block;
+      }
+
+      label,
+      summary {
+        font-size: 1.25em;
+        margin-bottom: 0.5em;
+        cursor: pointer;
+      }
+
+      label {
+        display: block;
+      }
+
+      fieldset {
+        border: none;
+        margin: 0;
+        padding: 0;
+        margin-bottom: 2em;
+      }
+
+      .btn {
+        font-size: 1.25em;
+        padding: 0.5em 1em;
+        background-color: #f8654b;
+        color: white;
+        border: none;
+        border-radius: 0.5em;
+        cursor: pointer;
+        display: block;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="setup">
+      <div id="setup-panel">
+        <img src="https://usetrmnl.com/images/brand/logos/logo--brand.svg" alt="TRMNL Logo" />
+
+        <form onsubmit="return trmnl.saveSetup(event)">
+          <fieldset>
+            <label for="macAddress">iPad MAC Address</label>
+            <input
+              name="macAddress"
+              id="macAddress"
+              type="text"
+              placeholder="00:00:00:00:00"
+              class="form-control"
+              required
+            />
+            <a
+              href="https://usetrmnl.com/devices/current/edit"
+              target="_blank"
+              style="margin-top: 0.5em; display: block"
+            >
+              Get the API key
+            </a>
+          </fieldset>
+
+          <!--fieldset style="display: none">
+            <label for="api_key">Device API Key</label>
+            <input
+              name="api_key"
+              id="api_key"
+              type="text"
+              placeholder="API Key"
+              class="form-control"
+              required
+            />
+            <a
+              href="https://usetrmnl.com/devices/current/edit"
+              target="_blank"
+              style="margin-top: 0.5em; display: block"
+            >
+              Get the API key
+            </a>
+          </fieldset-->
+
+          <details id="custom_server_details">
+            <summary>Custom Server URL</summary>
+            <fieldset>
+              <input
+                name="base_url"
+                id="base_url"
+                type="text"
+                placeholder="https://usetrmnl.com"
+                class="form-control"
+                value=""
+              />
+            </fieldset>
+          </details>
+
+          <button type="submit" class="btn">Save</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="screen-container">
+      <img id="screen" onclick="trmnl.showSetupForm()" />
+
+      <div id="error-container" style="display: none">
+        <div id="error-message"></div>
+        <div style="display: flex; gap: 1em; margin-top: 1em">
+          <button type="button" class="btn" onclick="trmnl.showSetupForm()">Setup</button>
+          <button type="button" class="btn" onclick="trmnl.fetchDisplay()">Retry</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
