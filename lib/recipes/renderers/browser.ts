@@ -58,19 +58,10 @@ export async function renderWithBrowser(
 		width,
 		height,
 		model: options.model ?? null,
-		grayscale: null, // TODO: not an optiona on this method
+		grayscale: null, // TODO: not an option on this method
 		paletteId: options.paletteId ?? null,
 		$timezone: options.$timezone,
 	});
-	/*
-	const xparams = new URLSearchParams({
-		width: String(width),
-		height: String(height),
-	});
-	if (options.model) params.set("model", options.model);
-	if (options.paletteId) params.set("palette_id", options.paletteId);
-	if (options.$timezone) params.set("$timezone", options.$timezone);
-*/
 
 	const url = `${baseUrl}/recipes/${slug}/preview?${params.toString()}`;
 

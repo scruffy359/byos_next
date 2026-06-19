@@ -88,23 +88,6 @@ export async function selectDisplayForDevice(
 		paletteId: profile.palette?.id ?? null,
 		$timezone: timezone,
 	});
-	/*
-	const params = new URLSearchParams({
-		width: String(width),
-		height: String(height),
-		grayscale: String(grayscaleLevels),
-		$timezone: timezone,
-	});
-	if (profile.model.name) {
-		params.set("model", profile.model.name);
-	}
-	if (profile.palette?.id) {
-		params.set("palette_id", profile.palette.id);
-	}
-	if (hints.base64) {
-		params.set("base64", "true");
-	}
-		*/
 	const baseQueryParams = params.toString();
 
 	const imageUrl = buildDeviceImageUrl({

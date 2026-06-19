@@ -56,10 +56,6 @@ function chooseDefaultPaletteId(model: PreviewModel | null): string {
 interface RecipePreviewStageProps {
 	slug: string;
 	isPortrait: boolean;
-	//screenComponent: ReactNode;
-	//bmpNode?: ReactNode;
-	//pngNode?: ReactNode;
-	//reactNode?: ReactNode;
 	bmpPipeline?: ReactNode;
 	pngPipeline?: ReactNode;
 	reactPipeline?: ReactNode;
@@ -86,11 +82,6 @@ const FORMAT_LABELS: Record<FormatValue, string> = {
 export function RecipePreviewStage({
 	slug,
 	isPortrait,
-	//screenComponent,
-	//bmpNode,
-	//pngNode,
-	//reactNode,
-	//renderPipelineFormatComponent,
 	bmpPipeline,
 	pngPipeline,
 	reactPipeline,
@@ -197,16 +188,7 @@ export function RecipePreviewStage({
 						paletteId: null,
 						$timezone: localTimezone(),
 					});
-					/*
-					const xparams = new URLSearchParams();
-					params.set("model", selectedModel.name);
-					if (selectedPaletteId) params.set("palette_id", selectedPaletteId);
-					if (selectedModel.mime_type === "image/bmp") {
-						params.set("width", String(simWidth));
-						params.set("height", String(simHeight));
-						params.set("grayscale", "2");
-					}
-					*/
+
 					return `/api/bitmap/${slug}.${ext}?${params.toString()}`;
 				})()
 			: null;
@@ -318,11 +300,8 @@ export function RecipePreviewStage({
 			);
 		}
 
-		console.log({ activeKey, reactPreviewSrc, simulateReactPreviewInIframe });
-		// TOOD return screen error
+		// TODO: return screen error
 		return null;
-		//return screenComponent;
-		//return active?.node;
 	})();
 	const toolbarToggleItemClass =
 		"h-8 bg-background px-3 text-xs font-medium text-muted-foreground data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-xs data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground";
