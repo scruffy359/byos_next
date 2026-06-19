@@ -7,6 +7,8 @@ import getLocalNews, {
 	type NewsStory,
 } from "./getData";
 
+const useDoubling = true;
+
 export const paramsSchema = z.object({
 	location: z
 		.string()
@@ -120,7 +122,7 @@ export default function LocalNews({
 	const secondarySummaryCap = width >= 1280 ? 220 : 120;
 
 	return (
-		<PreSatori useDoubling={true} width={width} height={height}>
+		<PreSatori useDoubling={useDoubling} width={width} height={height}>
 			<div className="flex h-full w-full flex-col bg-white p-4 lg:p-6 2xl:p-10 gap-3 lg:gap-5 2xl:gap-8 text-black">
 				{/* Lead post */}
 				<div className="flex flex-col rounded-xl border-2 border-black p-3 lg:p-5 2xl:p-8">
@@ -223,7 +225,7 @@ export const definition: RecipeDefinition<
 		version: "0.1.0",
 		createdAt: "2026-04-26T00:00:00Z",
 		updatedAt: "2026-04-26T00:00:00Z",
-		renderSettings: { doubleSizeForSharperText: true },
+		renderSettings: { doubleSizeForSharperText: useDoubling },
 	},
 	paramsSchema,
 	dataSchema,

@@ -14,9 +14,10 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { cn } from "@/lib/utils";
+import { buildDeviceImageParameters } from "@/lib/render/device-image-url";
+import { FormatValue } from "@/lib/types";
+import { cn, localTimezone } from "@/lib/utils";
 
-type FormatKey = "bmp" | "png" | "react";
 const DEFAULT_MODEL_NAME = "og_plus";
 
 type PreviewModel = {
@@ -55,24 +56,28 @@ function chooseDefaultPaletteId(model: PreviewModel | null): string {
 interface RecipePreviewStageProps {
 	slug: string;
 	isPortrait: boolean;
-	bmpNode?: ReactNode;
-	pngNode?: ReactNode;
-	reactNode?: ReactNode;
+	//screenComponent: ReactNode;
+	//bmpNode?: ReactNode;
+	//pngNode?: ReactNode;
+	//reactNode?: ReactNode;
 	bmpPipeline?: ReactNode;
 	pngPipeline?: ReactNode;
 	reactPipeline?: ReactNode;
-	defaultFormat?: FormatKey;
+	format: FormatValue;
 	/** When provided, a model selector drives BMP / React preview resolution. */
 	trmnlModels?: PreviewModel[];
 	trmnlPalettes?: PreviewPalette[];
 	/**
+	 * TODO: Why only for React?
+	 * TODO: Comment doesn't make sense as /preview will be server-side too.
+	 * TODO: /preview should be for Liquid only? as part of the UI is client-side but must transition back to server for preview.
 	 * When false, the React tab keeps the server-rendered preview (e.g. Liquid
 	 * recipes: `/recipes/.../preview` only exists for React components).
 	 */
 	simulateReactPreviewInIframe?: boolean;
 }
 
-const FORMAT_LABELS: Record<FormatKey, string> = {
+const FORMAT_LABELS: Record<FormatValue, string> = {
 	bmp: "BMP",
 	png: "PNG",
 	react: "React",
@@ -81,19 +86,20 @@ const FORMAT_LABELS: Record<FormatKey, string> = {
 export function RecipePreviewStage({
 	slug,
 	isPortrait,
-	bmpNode,
-	pngNode,
-	reactNode,
+	//screenComponent,
+	//bmpNode,
+	//pngNode,
+	//reactNode,
+	//renderPipelineFormatComponent,
 	bmpPipeline,
 	pngPipeline,
 	reactPipeline,
-	defaultFormat = "bmp",
+	format = FormatValue.bmp,
 	trmnlModels,
 	trmnlPalettes,
 	simulateReactPreviewInIframe = true,
 }: RecipePreviewStageProps) {
 	const router = useRouter();
-	const [format, setFormat] = useState<FormatKey>(defaultFormat);
 	const reactFrameRef = useRef<HTMLDivElement>(null);
 	const [reactFrameSize, setReactFrameSize] = useState({ width: 0, height: 0 });
 	const [modelName, setModelName] = useState<string>(() => {
@@ -106,6 +112,12 @@ export function RecipePreviewStage({
 	const [paletteId, setPaletteId] = useState<string>(() =>
 		chooseDefaultPaletteId(initialModel ?? null),
 	);
+
+	console.log({
+		where: "RecipePreviewStage",
+		format,
+		useClient: typeof window !== "undefined",
+	});
 
 	const deviceSimActive = Boolean(trmnlModels && trmnlModels.length > 0);
 
@@ -145,14 +157,17 @@ export function RecipePreviewStage({
 				: selectedModel.height
 			: null;
 
-	const formats: { key: FormatKey; node: ReactNode; pipeline: ReactNode }[] = [
-		{ key: "bmp", node: bmpNode, pipeline: bmpPipeline },
-		{ key: "png", node: pngNode, pipeline: pngPipeline },
-		{ key: "react", node: reactNode, pipeline: reactPipeline },
-	].filter((f) => f.node !== undefined) as typeof formats;
+	const formats: {
+		key: FormatValue;
+		pipeline: ReactNode /*node: ReactNode; */;
+	}[] = [
+		{ key: FormatValue.bmp, pipeline: bmpPipeline /* node: bmpNode */ },
+		{ key: FormatValue.png, pipeline: pngPipeline /* node: pngNode */ },
+		{ key: FormatValue.react, pipeline: reactPipeline /*, node: reactNode*/ },
+	]; //.filter((f) => f.node !== undefined) as typeof formats;
 
 	const active = formats.find((f) => f.key === format) || formats[0];
-	const activeKey = active?.key ?? defaultFormat;
+	const activeKey = format;
 
 	const useModelFrame =
 		deviceSimActive &&
@@ -174,7 +189,16 @@ export function RecipePreviewStage({
 		simHeight != null
 			? (() => {
 					const ext = modelImagePathExtension(selectedModel.mime_type);
-					const params = new URLSearchParams();
+					const params = buildDeviceImageParameters({
+						width: simWidth,
+						height: simHeight,
+						grayscale: 2,
+						model: selectedModel.name,
+						paletteId: null,
+						$timezone: localTimezone(),
+					});
+					/*
+					const xparams = new URLSearchParams();
 					params.set("model", selectedModel.name);
 					if (selectedPaletteId) params.set("palette_id", selectedPaletteId);
 					if (selectedModel.mime_type === "image/bmp") {
@@ -182,13 +206,13 @@ export function RecipePreviewStage({
 						params.set("height", String(simHeight));
 						params.set("grayscale", "2");
 					}
+					*/
 					return `/api/bitmap/${slug}.${ext}?${params.toString()}`;
 				})()
 			: null;
 
 	const reactPreviewSrc =
 		deviceSimActive &&
-		simulateReactPreviewInIframe &&
 		selectedModel != null &&
 		simWidth != null &&
 		simHeight != null
@@ -228,10 +252,23 @@ export function RecipePreviewStage({
 		return () => observer.disconnect();
 	}, [activeKey, reactPreviewSrc]);
 
+	const handleFormatChange = (nextFormat: string) => {
+		if (nextFormat === format) return;
+
+		const params = new URLSearchParams();
+		params.set("format", nextFormat);
+		if (isPortrait) {
+			params.set("orientation", "portrait");
+		}
+		router.push(`/recipes/${slug}?${params.toString()}`);
+	};
+
 	const handleOrientationChange = (nextPortrait: boolean) => {
 		if (nextPortrait === isPortrait) return;
 		router.push(
-			nextPortrait ? `/recipes/${slug}?format=portrait` : `/recipes/${slug}`,
+			nextPortrait
+				? `/recipes/${slug}?orientation=portrait`
+				: `/recipes/${slug}`,
 		);
 	};
 
@@ -242,9 +279,15 @@ export function RecipePreviewStage({
 			simWidth == null ||
 			simHeight == null
 		) {
-			return active?.node;
+			// TODO return models not configured error, must have at least one.
+			return null;
+			//return screenComponent;
+			//return active?.node;
 		}
-		if ((activeKey === "bmp" || activeKey === "png") && devicePreviewSrc) {
+		if (
+			(activeKey === FormatValue.bmp || activeKey === FormatValue.png) &&
+			devicePreviewSrc
+		) {
 			return (
 				<Image
 					width={simWidth}
@@ -257,11 +300,8 @@ export function RecipePreviewStage({
 				/>
 			);
 		}
-		if (
-			activeKey === "react" &&
-			reactPreviewSrc &&
-			simulateReactPreviewInIframe
-		) {
+
+		if (activeKey === FormatValue.react && reactPreviewSrc) {
 			return (
 				<div ref={reactFrameRef} className="absolute inset-0 overflow-hidden">
 					<iframe
@@ -277,7 +317,12 @@ export function RecipePreviewStage({
 				</div>
 			);
 		}
-		return active?.node;
+
+		console.log({ activeKey, reactPreviewSrc, simulateReactPreviewInIframe });
+		// TOOD return screen error
+		return null;
+		//return screenComponent;
+		//return active?.node;
 	})();
 	const toolbarToggleItemClass =
 		"h-8 bg-background px-3 text-xs font-medium text-muted-foreground data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-xs data-[state=on]:hover:bg-primary/90 data-[state=on]:hover:text-primary-foreground";
@@ -292,7 +337,7 @@ export function RecipePreviewStage({
 					type="single"
 					value={activeKey}
 					onValueChange={(value) => {
-						if (value) setFormat(value as FormatKey);
+						handleFormatChange(value);
 					}}
 					variant="outline"
 					size="sm"
@@ -456,7 +501,7 @@ export function RecipePreviewStage({
 							Pipeline
 						</span>
 						<div className="flex-1 text-xs text-muted-foreground [&_a]:text-primary [&_a]:hover:underline">
-							{active.pipeline}
+							{active?.pipeline}
 						</div>
 					</div>
 				</div>

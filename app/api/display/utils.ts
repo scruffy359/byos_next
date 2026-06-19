@@ -5,13 +5,14 @@ import { db } from "@/lib/database/db";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
-import { logger } from "@/lib/recipes/recipe-renderer";
+import { logger } from "@/lib/recipes/logger";
 import type {
 	Device,
 	PlaylistItem,
 	RefreshSchedule,
 	TimeRange,
 } from "@/lib/types";
+import { localTimezone } from "@/lib/utils";
 import { generateApiKey, generateFriendlyId, timezones } from "@/utils/helpers";
 import { DEFAULT_SCREEN } from "./route";
 
@@ -134,7 +135,7 @@ export const calculateRefreshRate = (
 export const getActivePlaylistItem = async (
 	playlistId: string,
 	currentIndex: number,
-	timezone: string = "UTC",
+	timezone: string = localTimezone(),
 	userId?: string | null,
 ): Promise<PlaylistItem | null> => {
 	const { ready } = await checkDbConnection();
@@ -175,6 +176,7 @@ export const getActivePlaylistItem = async (
 		timeFormatter.formatToParts(now);
 	const currentTime = `${hour}:${minute}`;
 
+	// TODO: fix hardcoded locale
 	const dayFormatter = new Intl.DateTimeFormat("en-US", {
 		...options,
 		weekday: "long",
@@ -415,7 +417,7 @@ export const findOrCreateDevice = async (
 						next_expected_update: new Date(
 							Date.now() + 3600 * 1000,
 						).toISOString(),
-						timezone: "UTC",
+						timezone: localTimezone(),
 						screen: DEFAULT_SCREEN,
 						model: headers.model,
 						user_id: currentUserId,
@@ -490,7 +492,7 @@ export const findOrCreateDevice = async (
 					next_expected_update: new Date(
 						Date.now() + 3600 * 1000,
 					).toISOString(),
-					timezone: "UTC",
+					timezone: localTimezone(),
 					screen: DEFAULT_SCREEN,
 					model: headers.model,
 					user_id: currentUserId,

@@ -6,6 +6,8 @@ import {
 } from "@/lib/render/device-image";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
 import type { TrmnlModel } from "@/lib/trmnl/types";
+import { getCurrentUserId } from "../auth/get-user";
+import { FormatValue } from "../types";
 import {
 	customFieldsToParamDefinitions,
 	fetchLiquidRecipeSettings,
@@ -31,6 +33,7 @@ import { resolveReactRecipe } from "./runtime/react";
  * routes don't need to know the difference.
  */
 
+/*
 export { DEFAULT_IMAGE_HEIGHT, DEFAULT_IMAGE_WIDTH } from "./constants";
 export { logger } from "./logger";
 export { getReactRecipeDefinition, listReactRecipes } from "./registry";
@@ -42,7 +45,7 @@ export type {
 	RecipeParamDefinitions,
 	RecipeParamType,
 } from "./zod-form";
-
+*/
 export const isBuildPhase = (): boolean =>
 	process.env.NEXT_PHASE === "phase-production-build";
 
@@ -52,10 +55,11 @@ type RenderRecipeArgs = {
 	imageHeight: number;
 	formats?: RasterizeFormat[];
 	grayscale?: number;
-	userId?: string | null;
+	userId: string | null;
 	cookies?: string;
 	model?: TrmnlModel | null;
 	paletteId?: string | null;
+	$timezone: string;
 };
 
 /**
@@ -66,15 +70,20 @@ export async function renderRecipeToImage({
 	slug,
 	imageWidth,
 	imageHeight,
-	formats = ["bitmap", "png"],
+	formats = [FormatValue.bmp, FormatValue.png],
 	grayscale,
 	userId,
 	cookies,
 	model,
 	paletteId,
+	$timezone,
 }: RenderRecipeArgs): Promise<RasterizeResults> {
 	// React path
-	const resolved = await resolveReactRecipe(slug, userId ?? undefined);
+	console.log({
+		where: "renderRecipeToImage",
+		$timezone,
+	});
+	const resolved = await resolveReactRecipe(slug, $timezone, userId);
 	if (resolved) {
 		const { definition, params, data } = resolved;
 		const element = createElement(definition.Component, {
@@ -94,12 +103,17 @@ export async function renderRecipeToImage({
 			model,
 			paletteId,
 			renderSettings: definition.meta.renderSettings ?? null,
+			$timezone,
 		});
 	}
 
 	// Liquid path
-	if (await isLiquidRecipe(slug, userId ?? undefined)) {
-		const html = await buildLiquidHtml(slug, userId ?? undefined);
+	if (await isLiquidRecipe(slug, userId)) {
+		console.log({ where: "renderRecipeToImage - isLiquidRecipe", slug });
+		const html = await buildLiquidHtml(
+			slug,
+			userId ?? (await getCurrentUserId()),
+		);
 		if (html === null) {
 			return rasterizeNotFound({ slug, imageWidth, imageHeight, formats });
 		}
@@ -114,6 +128,7 @@ export async function renderRecipeToImage({
 			model,
 			paletteId,
 			renderSettings: null,
+			$timezone,
 		});
 	}
 
@@ -126,19 +141,26 @@ export async function renderRecipeForDevice({
 	profile,
 	userId,
 	cookies,
+	$timezone,
 }: {
 	slug: string;
 	profile: DeviceProfile;
-	userId?: string | null;
+	userId: string | null;
 	cookies?: string;
+	$timezone: string;
 }): Promise<RenderDeviceImageResult | null> {
+	console.log({
+		where: "renderRecipeForDevice",
+		$timezone,
+	});
 	const renders = await renderRecipeToImage({
 		slug,
 		imageWidth: profile.model.width,
 		imageHeight: profile.model.height,
-		formats: ["png"],
+		formats: [FormatValue.png],
 		userId,
 		cookies,
+		$timezone,
 		model: profile.model,
 		paletteId: profile.palette?.id ?? null,
 	});
@@ -149,16 +171,17 @@ export async function renderRecipeForDevice({
 
 async function buildLiquidHtml(
 	slug: string,
-	userId?: string,
+	userId: string | null,
 ): Promise<string | null> {
 	let customFieldOverrides: Record<string, unknown> | undefined;
 	const settings = await fetchLiquidRecipeSettings(slug, userId);
 	if (settings?.custom_fields?.length) {
 		const definitions = customFieldsToParamDefinitions(settings.custom_fields);
 		const { getScreenParams } = await import("@/app/actions/screens-params");
-		customFieldOverrides = await getScreenParams(slug, definitions, userId);
+		// TODO: internalValues
+		customFieldOverrides = await getScreenParams(slug, userId, definitions, {});
 	}
-	const result = await renderLiquidRecipe(slug, customFieldOverrides, userId);
+	const result = await renderLiquidRecipe(slug, userId, customFieldOverrides);
 	return result?.html ?? null;
 }
 
@@ -185,5 +208,6 @@ async function rasterizeNotFound({
 		imageHeight,
 		formats,
 		renderSettings: null,
+		$timezone: null,
 	});
 }

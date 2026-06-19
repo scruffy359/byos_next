@@ -3,6 +3,8 @@ import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
 import getWikipediaData, { WikipediaData } from "./getData";
 
+const useDoubling = true;
+
 export const paramsSchema = z.object({});
 
 export const dataSchema = z.object({
@@ -147,7 +149,7 @@ export default function Wikipedia({
 	const imageDimensions = getImageDimensions();
 
 	return (
-		<PreSatori width={width} height={height}>
+		<PreSatori useDoubling={useDoubling} width={width} height={height}>
 			<div className="flex flex-col w-full h-full bg-white text-black">
 				<div className="flex-none p-4 lg:p-8 2xl:p-12 border-b border-black">
 					<h1
@@ -223,7 +225,7 @@ export const definition: RecipeDefinition<
 		version: "0.1.0",
 		createdAt: "2025-03-01T00:00:00Z",
 		updatedAt: "2025-03-13T00:00:00Z",
-		renderSettings: { doubleSizeForSharperText: true },
+		renderSettings: { doubleSizeForSharperText: useDoubling },
 	},
 	paramsSchema,
 	dataSchema,

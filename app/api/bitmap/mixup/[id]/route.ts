@@ -8,12 +8,14 @@ import { getLayoutById, type LayoutSlot } from "@/lib/mixup/constants";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
-	logger,
-	renderRecipeToImage,
-} from "@/lib/recipes/recipe-renderer";
+} from "@/lib/recipes/constants";
+import { logger } from "@/lib/recipes/logger";
+import { renderRecipeToImage } from "@/lib/recipes/recipe-renderer";
 import { renderDeviceImage } from "@/lib/render/device-image";
 import { stripImageExtension } from "@/lib/render/device-image-url";
 import { getDeviceProfile } from "@/lib/trmnl/device-profile";
+import { FormatValue } from "@/lib/types";
+import { localTimezone } from "@/lib/utils";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 export async function GET(
@@ -33,6 +35,7 @@ export async function GET(
 		const paletteOverride = searchParams.get("palette_id");
 		const accessToken =
 			searchParams.get("access_token") ?? req.headers.get("Access-Token");
+		const $timezone = searchParams.get("$timezone") || localTimezone();
 
 		const width = widthParam ? parseInt(widthParam, 10) : DEFAULT_IMAGE_WIDTH;
 		const height = heightParam
@@ -162,6 +165,7 @@ export async function GET(
 			width,
 			height,
 			userId,
+			$timezone,
 		);
 		// Dispatch on profile MIME — model/palette_id are URL query params, so
 		// the same URL always picks the same renderer.
@@ -201,13 +205,15 @@ async function renderSlot(
 	slot: LayoutSlot,
 	recipeSlug: string,
 	userId: string,
+	$timezone: string,
 ): Promise<Buffer | null> {
 	try {
 		const renders = await renderRecipeToImage({
 			slug: recipeSlug,
 			imageWidth: slot.width,
 			imageHeight: slot.height,
-			formats: ["png"],
+			formats: [FormatValue.png],
+			$timezone,
 			userId,
 		});
 		return renders.png;
@@ -229,6 +235,7 @@ async function renderMixupCompositePng(
 	width: number,
 	height: number,
 	userId: string,
+	$timezone: string,
 ): Promise<Buffer> {
 	// Render all slots in parallel
 	const slotRenders = await Promise.all(
@@ -238,7 +245,7 @@ async function renderMixupCompositePng(
 				return { slot, buffer: null };
 			}
 
-			const buffer = await renderSlot(slot, recipeSlug, userId);
+			const buffer = await renderSlot(slot, recipeSlug, userId, $timezone);
 			return { slot, buffer };
 		}),
 	);

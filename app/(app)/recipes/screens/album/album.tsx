@@ -1,12 +1,13 @@
 import { z } from "zod";
 import type { RecipeDefinition } from "@/lib/recipes/types";
+import { localTimezone } from "@/lib/utils";
 import { PreSatori } from "@/utils/pre-satori";
 
 const DEFAULT_IMAGE_URL = "https://byos-nextjs.vercel.app/album/london.png";
 
 export const paramsSchema = z.object({
+	$timezone: z.string().default(localTimezone()),
 	imageUrl: z
-		.string()
 		.url()
 		.default(DEFAULT_IMAGE_URL)
 		.describe("URL of the image to display in the album")
@@ -18,6 +19,7 @@ interface AlbumProps {
 	width?: number;
 	height?: number;
 	params?: {
+		$timezone?: string;
 		imageUrl?: string;
 	};
 }
@@ -28,6 +30,8 @@ export default async function Album({
 	params,
 }: AlbumProps) {
 	const imageUrl = params?.imageUrl || DEFAULT_IMAGE_URL;
+
+	const now = new Date();
 
 	return (
 		<PreSatori width={width} height={height}>
@@ -45,7 +49,7 @@ export default async function Album({
 				</picture>
 				<div className="text-[60px] text-white absolute top-0 right-0 p-4 flex flex-col items-end leading-none">
 					<span className="">
-						{new Date().toLocaleTimeString("en-GB", {
+						{now.toLocaleTimeString("en-GB", {
 							timeZone: "Europe/London",
 							hour12: true,
 							hour: "2-digit",
@@ -54,7 +58,7 @@ export default async function Album({
 					</span>
 					<span className="">
 						London{" "}
-						{new Date()
+						{now
 							.toLocaleString("en-GB", {
 								timeZone: "Europe/London",
 								timeZoneName: "short",

@@ -37,6 +37,7 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import { buildDeviceImageParameters } from "@/lib/render/device-image-url";
 import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import {
 	DEFAULT_MODEL_NAME,
@@ -184,6 +185,16 @@ export default function DeviceEditForm({
 		}
 	}, [availableGrayscaleLevels, grayscaleLevels, onSelectChange]);
 	const imageExtension = getModelImageExtension(selectedModel);
+	const deviceImageParams = buildDeviceImageParameters({
+		width: deviceWidth,
+		height: deviceHeight,
+		grayscale: grayscaleLevels,
+		model: selectedModel?.name,
+		paletteId: selectedPalette?.id ?? null,
+		$timezone: editedDevice.timezone,
+	});
+
+	/*
 	const profileQuery = new URLSearchParams({
 		width: String(deviceWidth),
 		height: String(deviceHeight),
@@ -195,6 +206,9 @@ export default function DeviceEditForm({
 	if (selectedPalette?.id) {
 		profileQuery.set("palette_id", selectedPalette.id);
 	}
+	*/
+
+	const urlQuery = deviceImageParams.toString();
 
 	const isMixup =
 		editedDevice.display_mode === DeviceDisplayMode.MIXUP &&
@@ -204,8 +218,8 @@ export default function DeviceEditForm({
 		!!editedDevice.playlist_id;
 
 	const heroSrc = isMixup
-		? `/api/bitmap/mixup/${editedDevice.mixup_id}.${imageExtension}?${profileQuery}`
-		: `/api/bitmap/${editedDevice?.screen || "simple-text"}.${imageExtension}?${profileQuery}`;
+		? `/api/bitmap/mixup/${editedDevice.mixup_id}.${imageExtension}?${urlQuery}`
+		: `/api/bitmap/${editedDevice?.screen || "simple-text"}.${imageExtension}?${urlQuery}`;
 
 	return (
 		<form onSubmit={onSubmit}>

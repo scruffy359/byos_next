@@ -19,6 +19,10 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import {
+	buildDeviceImageParameters,
+	buildDeviceImageUrlWithImageType,
+} from "@/lib/render/device-image-url";
 import type { Device, SystemLog } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";
@@ -26,6 +30,54 @@ import { formatDate, getDeviceStatus } from "@/utils/helpers";
 interface DashboardClientPageProps {
 	devices: Device[];
 	systemLogs: SystemLog[];
+}
+
+type DeviceData = {
+	url: string;
+	isPortrait: boolean;
+	width: number;
+	height: number;
+	screenName: string | null;
+};
+function getDeviceData(device: Device | null): DeviceData | null {
+	if (!device) {
+		return null;
+	}
+
+	const isPortrait = device?.screen_orientation === "portrait";
+	const deviceWidth = isPortrait
+		? device?.screen_height || DEFAULT_IMAGE_HEIGHT
+		: device?.screen_width || DEFAULT_IMAGE_WIDTH;
+	const deviceHeight = isPortrait
+		? device?.screen_width || DEFAULT_IMAGE_WIDTH
+		: device?.screen_height || DEFAULT_IMAGE_HEIGHT;
+
+	const deviceImageParams = buildDeviceImageParameters({
+		width: deviceWidth,
+		height: deviceHeight,
+		paletteId: null,
+		model: device.model,
+		grayscale: null,
+		$timezone: device.timezone,
+	});
+
+	const screenName = device.screen;
+
+	const deviceImageUrl = buildDeviceImageUrlWithImageType({
+		baseUrl: "",
+		imagePath: "api/bitmap",
+		screenName: screenName ?? "not-found",
+		imageType: "bmp",
+		query: deviceImageParams.toString(),
+	});
+
+	return {
+		url: deviceImageUrl,
+		isPortrait,
+		width: deviceWidth,
+		height: deviceHeight,
+		screenName,
+	};
 }
 
 export default function DashboardClientPage({
@@ -49,13 +101,7 @@ export default function DashboardClientPage({
 				)[0]
 			: null;
 
-	const isPortrait = lastUpdatedDevice?.screen_orientation === "portrait";
-	const deviceWidth = isPortrait
-		? lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT
-		: lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH;
-	const deviceHeight = isPortrait
-		? lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH
-		: lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT;
+	const deviceData = getDeviceData(lastUpdatedDevice);
 
 	return (
 		<div className="space-y-4">
@@ -85,17 +131,17 @@ export default function DashboardClientPage({
 					</header>
 
 					<div className="flex flex-1 items-center justify-center bg-[radial-gradient(circle_at_50%_0%,theme(colors.muted/40),transparent_70%)] p-6">
-						{lastUpdatedDevice ? (
+						{deviceData ? (
 							<div
 								className={cn(
 									"w-full",
-									isPortrait ? "max-w-[260px]" : "max-w-[520px]",
+									deviceData.isPortrait ? "max-w-[260px]" : "max-w-[520px]",
 								)}
 							>
-								<DeviceFrame size="lg" portrait={isPortrait}>
+								<DeviceFrame size="lg" portrait={deviceData.isPortrait}>
 									<Image
-										src={`/api/bitmap/${lastUpdatedDevice.screen}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
-										alt={`${lastUpdatedDevice.name} screen`}
+										src={deviceData.url}
+										alt={`${deviceData.screenName} screen`}
 										fill
 										className="absolute inset-0 h-full w-full object-cover"
 										style={{ imageRendering: "pixelated" }}

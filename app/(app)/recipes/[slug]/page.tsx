@@ -1,9 +1,9 @@
 import { revalidateTag } from "next/cache";
 import { headers } from "next/headers";
-import Image from "next/image";
+//import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { cache, Suspense, use } from "react";
+import { cache } from "react";
 import {
 	getScreenParams,
 	updateScreenParams,
@@ -14,27 +14,32 @@ import { RecipePreviewStage } from "@/components/recipes/recipe-preview-stage";
 import RecipeProps from "@/components/recipes/recipe-props";
 import { ScreenParamsForm } from "@/components/recipes/screen-params-form";
 import { Badge } from "@/components/ui/badge";
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { listAllRecipes } from "@/lib/recipes/catalog";
-import LiquidPreview from "@/lib/recipes/liquid-preview";
+//import LiquidPreview from "@/lib/recipes/liquid-preview";
 import {
 	customFieldsToParamDefinitions,
 	fetchLiquidRecipeSettings,
-	renderLiquidRecipe,
+	//renderLiquidRecipe,
 } from "@/lib/recipes/liquid-renderer";
 import {
-	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH,
-	getRendererType,
-	isBuildPhase,
-	logger,
-	renderRecipeToImage,
-	resolveReactRecipe,
+	// DEFAULT_IMAGE_HEIGHT,
+	// DEFAULT_IMAGE_WIDTH,
+	//getRendererType,
+	// isBuildPhase,
+	// logger,
+	// renderRecipeToImage,
+	//resolveReactRecipe,
 } from "@/lib/recipes/recipe-renderer";
-import { rasterize } from "@/lib/recipes/render/rasterize";
+import { getRendererType } from "@/lib/recipes/render/rasterize";
+import { resolveReactRecipe } from "@/lib/recipes/runtime/react";
+//import { rasterize } from "@/lib/recipes/render/rasterize";
 import { zodObjectToParamDefinitions } from "@/lib/recipes/zod-form";
 import { listModels, listPalettes } from "@/lib/trmnl/registry";
+import { FormatValue } from "@/lib/types";
+import { localTimezone } from "@/lib/utils";
 
 export async function generateMetadata() {
 	return {};
@@ -74,6 +79,7 @@ const fetchLiquidRecipeMeta = cache(async (slug: string) => {
 	return recipe ?? null;
 });
 
+/*
 const LiquidRenderComponent = ({
 	slug,
 	format,
@@ -81,21 +87,30 @@ const LiquidRenderComponent = ({
 	imageWidth,
 	imageHeight,
 	customFieldOverrides,
+	userId,
 }: {
 	slug: string;
-	format: "bitmap" | "png" | "react";
+	format: FormatValue;
 	title: string;
 	imageWidth: number;
 	imageHeight: number;
 	customFieldOverrides?: Record<string, unknown>;
+	userId: string | null;
 }) => {
-	const result = use(renderLiquidRecipe(slug, customFieldOverrides));
+	console.log({
+		where: "LiquidRenderComponent",
+		format,
+		useClient: typeof window !== "undefined",
+	});
+	const result = use(
+		renderLiquidRecipe(slug, customFieldOverrides, userId ?? undefined),
+	);
 
 	if (!result) {
 		return <EmptyState>Failed to render liquid template</EmptyState>;
 	}
 
-	if (format === "react") {
+	if (format === FormatValue.react) {
 		return (
 			<ScaledToFit imageWidth={imageWidth} imageHeight={imageHeight}>
 				<LiquidPreview
@@ -117,7 +132,7 @@ const LiquidRenderComponent = ({
 		}),
 	);
 
-	if (format === "bitmap") {
+	if (format === FormatValue.bmp) {
 		if (!renders.bitmap)
 			return <EmptyState>Failed to generate bitmap</EmptyState>;
 		return (
@@ -148,7 +163,8 @@ const LiquidRenderComponent = ({
 
 	return null;
 };
-
+*/
+/*
 const renderReactFormats = cache(
 	async (
 		slug: string,
@@ -168,7 +184,9 @@ const renderReactFormats = cache(
 				slug,
 				imageWidth,
 				imageHeight,
-				formats: ["bitmap", "png"],
+				formats: [FormatValue.bmp, FormatValue.png],
+				$timezone: localTimezone(),
+				userId: null,
 			});
 		} catch (error) {
 			logger.error(`Error generating formats for ${slug}:`, error);
@@ -176,21 +194,28 @@ const renderReactFormats = cache(
 		}
 	},
 );
-
+*/
+/*
 const RenderComponent = ({
 	slug,
 	format,
 	title,
 	imageWidth,
 	imageHeight,
+	$timezone = localTimezone(),
 }: {
 	slug: string;
-	format: "bitmap" | "png" | "react";
+	format: FormatValue;
 	title: string;
 	imageWidth: number;
 	imageHeight: number;
+	$timezone: string;
 }) => {
-	const resolved = use(resolveReactRecipe(slug));
+	console.log({
+		where: "RenderComponent",
+		useClient: typeof window !== "undefined",
+	});
+	const resolved = use(resolveReactRecipe(slug, $timezone, null));
 	if (!resolved) return <EmptyState>Recipe not found</EmptyState>;
 
 	const { definition, params, data } = resolved;
@@ -231,7 +256,7 @@ const RenderComponent = ({
 
 	const renders = use(renderReactFormats(slug, imageWidth, imageHeight));
 
-	if (format === "bitmap") {
+	if (format === FormatValue.bmp) {
 		if (!renders.bitmap)
 			return <EmptyState>Failed to generate bitmap</EmptyState>;
 		return (
@@ -262,7 +287,8 @@ const RenderComponent = ({
 
 	return null;
 };
-
+*/
+/*
 function ScaledToFit({
 	imageWidth,
 	imageHeight,
@@ -307,7 +333,7 @@ function LoadingState({ label }: { label: string }) {
 		</div>
 	);
 }
-
+*/
 function MetaChips({
 	type,
 	version,
@@ -368,22 +394,32 @@ function SectionCard({
 	);
 }
 
+const DefaultFormat = FormatValue.bmp;
+
 export default async function RecipePage({
 	params,
 	searchParams,
 }: {
 	params: Promise<{ slug: string }>;
-	searchParams: Promise<{ format?: string }>;
+	searchParams: Promise<{ orientation?: string; format?: string }>;
 }) {
 	headers();
 	const { slug } = await params;
-	const { format } = await searchParams;
-	const isPortrait = format === "portrait";
-	const imageWidth = isPortrait ? DEFAULT_IMAGE_HEIGHT : DEFAULT_IMAGE_WIDTH;
-	const imageHeight = isPortrait ? DEFAULT_IMAGE_WIDTH : DEFAULT_IMAGE_HEIGHT;
+	const { orientation, format = DefaultFormat } = await searchParams;
+	console.log({
+		where: "RecipePage",
+		slug,
+		format,
+		useClient: typeof window !== "undefined",
+	});
+	const formatValue = format as FormatValue;
+	const isPortrait = orientation === "portrait";
+	// const imageWidth = isPortrait ? DEFAULT_IMAGE_HEIGHT : DEFAULT_IMAGE_WIDTH;
+	// const imageHeight = isPortrait ? DEFAULT_IMAGE_WIDTH : DEFAULT_IMAGE_HEIGHT;
+	const $timezone = localTimezone();
 
 	// React recipe path
-	const resolved = await resolveReactRecipe(slug);
+	const resolved = await resolveReactRecipe(slug, $timezone, null);
 	if (resolved) {
 		const { definition, params: resolvedParams, data } = resolved;
 		const meta = definition.meta;
@@ -396,6 +432,55 @@ export default async function RecipePage({
 			listPalettes(),
 		]);
 
+		/*
+		const renderScreenFormatReactComponent = (format: FormatKey) => {
+			switch (format) {
+				case FormatValue.bmp: {
+					return (
+						<Suspense fallback={<LoadingState label="Rendering bitmap…" />}>
+							<RenderComponent
+								slug={slug}
+								format={FormatValue.bmp}
+								title={meta.title}
+								imageWidth={imageWidth}
+								imageHeight={imageHeight}
+								$timezone={$timezone}
+							/>
+						</Suspense>
+					);
+				}
+				case FormatValue.png: {
+					return (
+						<Suspense fallback={<LoadingState label="Rendering PNG…" />}>
+							<RenderComponent
+								slug={slug}
+								format={FormatValue.png}
+								title={meta.title}
+								imageWidth={imageWidth}
+								imageHeight={imageHeight}
+								$timezone={$timezone}
+							/>
+						</Suspense>
+					);
+				}
+				default:
+					return (
+						<Suspense fallback={<LoadingState label="Rendering recipe…" />}>
+							<RenderComponent
+								slug={slug}
+								format={FormatValue.react}
+								title={meta.title}
+								imageWidth={imageWidth}
+								imageHeight={imageHeight}
+								$timezone={$timezone}
+							/>
+						</Suspense>
+					);
+			}
+		};
+
+		const screenComponent = renderScreenFormatReactComponent(formatValue);
+*/
 		return (
 			<div className="@container">
 				<PageTemplate
@@ -434,39 +519,7 @@ export default async function RecipePage({
 						isPortrait={isPortrait}
 						trmnlModels={trmnlModels}
 						trmnlPalettes={trmnlPalettes}
-						bmpNode={
-							<Suspense fallback={<LoadingState label="Rendering bitmap…" />}>
-								<RenderComponent
-									slug={slug}
-									format="bitmap"
-									title={meta.title}
-									imageWidth={imageWidth}
-									imageHeight={imageHeight}
-								/>
-							</Suspense>
-						}
-						pngNode={
-							<Suspense fallback={<LoadingState label="Rendering PNG…" />}>
-								<RenderComponent
-									slug={slug}
-									format="png"
-									title={meta.title}
-									imageWidth={imageWidth}
-									imageHeight={imageHeight}
-								/>
-							</Suspense>
-						}
-						reactNode={
-							<Suspense fallback={<LoadingState label="Rendering recipe…" />}>
-								<RenderComponent
-									slug={slug}
-									format="react"
-									title={meta.title}
-									imageWidth={imageWidth}
-									imageHeight={imageHeight}
-								/>
-							</Suspense>
-						}
+						format={formatValue}
 						bmpPipeline={
 							<span>
 								JSX → pre-satori → {getRendererType()} PNG → render-bmp →{" "}
@@ -520,17 +573,77 @@ export default async function RecipePage({
 	const title = liquidMeta.name;
 	const description = liquidMeta.description;
 
-	const liquidSettings = await fetchLiquidRecipeSettings(slug);
+	const userId = await getCurrentUserId();
+	const liquidSettings = await fetchLiquidRecipeSettings(slug, userId);
 	const customFields = liquidSettings?.custom_fields ?? [];
 	const paramDefinitions = customFieldsToParamDefinitions(customFields);
 	const hasParams = Object.keys(paramDefinitions).length > 0;
 	const storedValues = hasParams
-		? await getScreenParams(slug, paramDefinitions)
+		? // TODO: internalvalues???
+			await getScreenParams(slug, null, paramDefinitions, {})
 		: {};
 	const [trmnlModels, trmnlPalettes] = await Promise.all([
 		listModels(),
 		listPalettes(),
 	]);
+
+	/*
+	const renderScreenFormatLiquidComponent = async (format: FormatKey) => {
+		console.log({
+			where: "renderScreenFormatLiquidComponent",
+			format,
+		});
+		switch (format) {
+			case FormatValue.bmp: {
+				return (
+					<Suspense fallback={<LoadingState label="Rendering bitmap…" />}>
+						<LiquidRenderComponent
+							slug={slug}
+							format={FormatValue.bmp}
+							title={title}
+							imageWidth={imageWidth}
+							imageHeight={imageHeight}
+							customFieldOverrides={storedValues}
+							userId={userId}
+						/>
+					</Suspense>
+				);
+			}
+
+			case FormatValue.png: {
+				return (
+					<Suspense fallback={<LoadingState label="Rendering PNG…" />}>
+						<LiquidRenderComponent
+							slug={slug}
+							format={FormatValue.png}
+							title={title}
+							imageWidth={imageWidth}
+							imageHeight={imageHeight}
+							customFieldOverrides={storedValues}
+							userId={userId}
+						/>
+					</Suspense>
+				);
+			}
+			default:
+				return (
+					<Suspense fallback={<LoadingState label="Rendering recipe…" />}>
+						<LiquidRenderComponent
+							slug={slug}
+							format={FormatValue.react}
+							title={title}
+							imageWidth={imageWidth}
+							imageHeight={imageHeight}
+							customFieldOverrides={storedValues}
+							userId={userId}
+						/>
+					</Suspense>
+				);
+		}
+	};
+
+	const liquidScreenComponent = renderScreenFormatLiquidComponent(formatValue);
+	*/
 
 	return (
 		<div className="@container">
@@ -565,42 +678,7 @@ export default async function RecipePage({
 					trmnlModels={trmnlModels}
 					trmnlPalettes={trmnlPalettes}
 					simulateReactPreviewInIframe={false}
-					bmpNode={
-						<Suspense fallback={<LoadingState label="Rendering bitmap…" />}>
-							<LiquidRenderComponent
-								slug={slug}
-								format="bitmap"
-								title={title}
-								imageWidth={imageWidth}
-								imageHeight={imageHeight}
-								customFieldOverrides={storedValues}
-							/>
-						</Suspense>
-					}
-					pngNode={
-						<Suspense fallback={<LoadingState label="Rendering PNG…" />}>
-							<LiquidRenderComponent
-								slug={slug}
-								format="png"
-								title={title}
-								imageWidth={imageWidth}
-								imageHeight={imageHeight}
-								customFieldOverrides={storedValues}
-							/>
-						</Suspense>
-					}
-					reactNode={
-						<Suspense fallback={<LoadingState label="Rendering recipe…" />}>
-							<LiquidRenderComponent
-								slug={slug}
-								format="react"
-								title={title}
-								imageWidth={imageWidth}
-								imageHeight={imageHeight}
-								customFieldOverrides={storedValues}
-							/>
-						</Suspense>
-					}
+					format={formatValue}
 					bmpPipeline={
 						<span>
 							Liquid → liquidjs → HTML → Puppeteer PNG → render-bmp →{" "}
@@ -614,7 +692,6 @@ export default async function RecipePage({
 						<span>Liquid → liquidjs → HTML → browser preview</span>
 					}
 				/>
-
 				{hasParams && (
 					<ScreenParamsForm
 						slug={slug}

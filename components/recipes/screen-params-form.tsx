@@ -161,6 +161,17 @@ export function ScreenParamsForm({
 	if (!hasParams) return null;
 
 	const entries = Object.entries(paramsSchema);
+	// Ignore params starting with "$", internal only
+	const userEntries = entries.filter(([key, _definition]) => {
+		if (key.charAt(0) === "$") {
+			return false;
+		}
+		return true;
+	});
+
+	if (userEntries.length === 0) {
+		return null;
+	}
 
 	return (
 		<form
@@ -215,7 +226,7 @@ export function ScreenParamsForm({
 				</div>
 			</div>
 			<div className="grid gap-4 p-4 sm:grid-cols-2">
-				{entries.map(([key, definition]) => {
+				{userEntries.map(([key, definition]) => {
 					const fieldError = fieldErrors[key];
 					return (
 						<div key={key} className="flex flex-col gap-1.5">

@@ -1,5 +1,6 @@
 import type { CookieData } from "puppeteer-core";
 import { getBrowser } from "@/lib/recipes/chrome-pool";
+import { buildDeviceImageParameters } from "@/lib/render/device-image-url";
 
 /**
  * Parse a Cookie header string into individual cookie objects.
@@ -39,6 +40,7 @@ function parseCookies(
 export type RenderWithBrowserOptions = {
 	model?: string | null;
 	paletteId?: string | null;
+	$timezone: string | null;
 };
 
 export async function renderWithBrowser(
@@ -47,19 +49,32 @@ export async function renderWithBrowser(
 	height: number,
 	scale = 1,
 	cookies?: string,
-	options: RenderWithBrowserOptions = {},
+	options: RenderWithBrowserOptions = { $timezone: null },
 ): Promise<Buffer> {
 	const port = process.env.PORT || 3000;
 	const baseUrl =
 		process.env.NEXT_PUBLIC_BASE_URL ?? `http://127.0.0.1:${port}`;
-	const params = new URLSearchParams({
+	const params = buildDeviceImageParameters({
+		width,
+		height,
+		model: options.model ?? null,
+		grayscale: null, // TODO: not an optiona on this method
+		paletteId: options.paletteId ?? null,
+		$timezone: options.$timezone,
+	});
+	/*
+	const xparams = new URLSearchParams({
 		width: String(width),
 		height: String(height),
 	});
 	if (options.model) params.set("model", options.model);
 	if (options.paletteId) params.set("palette_id", options.paletteId);
+	if (options.$timezone) params.set("$timezone", options.$timezone);
+*/
+
 	const url = `${baseUrl}/recipes/${slug}/preview?${params.toString()}`;
 
+	console.log({ where: "renderWithBrowser", url, options });
 	const browser = await getBrowser("trusted");
 	const context = await browser.createBrowserContext();
 	const page = await context.newPage();

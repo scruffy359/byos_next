@@ -103,6 +103,14 @@ export async function updateScreenParams(
 	}
 }
 
+const hasValue = (value: unknown) => {
+	return (
+		value !== undefined &&
+		value !== null &&
+		!(typeof value === "string" && value.trim() === "")
+	);
+};
+
 /**
  * Read user-saved parameter overrides for a recipe.
  *
@@ -113,12 +121,13 @@ export async function updateScreenParams(
  */
 export async function getScreenParams(
 	slug: string,
-	definitions?: RecipeParamDefinitions,
-	userId?: string,
+	userId: string | null,
+	definitions: RecipeParamDefinitions | null,
+	internalValues: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
 	const { ready } = await checkDbConnection();
 	if (!ready) {
-		return definitionDefaults(definitions);
+		return definitionDefaults(definitions ?? undefined);
 	}
 
 	const query = (
@@ -148,13 +157,20 @@ export async function getScreenParams(
 	const merged: Record<string, unknown> = {};
 	for (const [key, definition] of Object.entries(definitions)) {
 		const incoming = parsedParams?.[key];
-		if (
-			incoming !== undefined &&
-			incoming !== null &&
-			!(typeof incoming === "string" && incoming.trim() === "")
-		) {
+		if (hasValue(incoming)) {
 			merged[key] = incoming;
-		} else if (definition.default !== undefined) {
+			continue;
+		}
+
+		// use internal
+		const internalIncoming = internalValues[key];
+		if (hasValue(internalIncoming)) {
+			merged[key] = internalIncoming;
+			continue;
+		}
+
+		// default to definition default
+		if (definition.default !== undefined) {
 			merged[key] = definition.default;
 		}
 	}

@@ -7,10 +7,12 @@ import { logError, logInfo } from "@/lib/logger";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import {
 	buildDeviceImageFilename,
+	buildDeviceImageParameters,
 	buildDeviceImageUrl,
 } from "@/lib/render/device-image-url";
 import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import type { RefreshSchedule } from "@/lib/types";
+import { localTimezone } from "@/lib/utils";
 import {
 	buildDisplayResponse,
 	buildErrorResponse,
@@ -48,14 +50,16 @@ export async function GET(request: Request) {
 		const profile = await getDeviceProfile(headers.model);
 		const width = headers.width || profile.model.width;
 		const height = headers.height || profile.model.height;
-		const noDbParams = new URLSearchParams({
-			width: String(width),
-			height: String(height),
-			grayscale: "2",
+
+		const noDbParams = buildDeviceImageParameters({
+			width,
+			height,
+			grayscale: 2,
+			model: profile.model.name,
+			paletteId: profile.palette?.id ?? null,
+			$timezone: localTimezone(),
 		});
-		if (profile.model.name) noDbParams.set("model", profile.model.name);
-		if (profile.palette?.id) noDbParams.set("palette_id", profile.palette.id);
-		if (headers.base64) noDbParams.set("base64", "true");
+		//if (headers.base64) noDbParams.set("base64", "true");
 		const noDbQueryParams = noDbParams.toString();
 
 		return buildDisplayResponse(
@@ -85,6 +89,7 @@ export async function GET(request: Request) {
 			});
 			return buildErrorResponse("Device not found", baseUrl, uniqueId);
 		}
+		const timezone = device.timezone || localTimezone();
 
 		const selection = await selectDisplayForDevice(device, {
 			hostUrl: headers.hostUrl,
@@ -102,7 +107,7 @@ export async function GET(request: Request) {
 					const activeItem = await getActivePlaylistItem(
 						device.playlist_id,
 						device.current_playlist_index || 0,
-						device.timezone || "UTC",
+						timezone,
 						device.user_id,
 					);
 
@@ -155,7 +160,7 @@ export async function GET(request: Request) {
 				dynamicRefreshRate = calculateRefreshRate(
 					device.refresh_schedule as unknown as RefreshSchedule,
 					180,
-					device.timezone || "UTC",
+					timezone,
 				);
 				break;
 
@@ -163,11 +168,12 @@ export async function GET(request: Request) {
 				dynamicRefreshRate = calculateRefreshRate(
 					device.refresh_schedule as unknown as RefreshSchedule,
 					180,
-					device.timezone || "UTC",
+					timezone,
 				);
 				break;
 		}
 
+		// Remove precache as cache lookup is never used.
 		precacheImageInBackground(imageUrl, device.friendly_id);
 		updateDeviceStatus(device, headers, dynamicRefreshRate);
 

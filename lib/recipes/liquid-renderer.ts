@@ -12,7 +12,8 @@ import {
 import { db } from "@/lib/database/db";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
-import { logger, type RecipeParamDefinitions } from "./recipe-renderer";
+import { logger } from "./logger";
+import { RecipeParamDefinitions } from "./zod-form";
 
 const TRMNL_CSS_URL = "https://trmnl.com/css/latest/plugins.css";
 const TRMNL_JS_URL = "https://trmnl.com/js/latest/plugins.js";
@@ -78,7 +79,7 @@ class TemplateTag extends Tag {
  */
 async function fetchRecipeFiles(
 	slug: string,
-	userId?: string,
+	userId: string | null,
 ): Promise<Map<string, string> | null> {
 	const { ready } = await checkDbConnection();
 	if (!ready) {
@@ -345,7 +346,7 @@ function findTemplateFile(
  */
 export async function fetchLiquidRecipeSettings(
 	slug: string,
-	userId?: string,
+	userId: string | null,
 ): Promise<SettingsYml | null> {
 	const files = await fetchRecipeFiles(slug, userId);
 	if (!files) return null;
@@ -432,8 +433,8 @@ export function registerCustomFilters(engine: Liquid): void {
  */
 export async function renderLiquidRecipe(
 	slug: string,
+	userId: string | null,
 	customFieldOverrides?: Record<string, unknown>,
-	userId?: string,
 ): Promise<LiquidRenderResult | null> {
 	const files = await fetchRecipeFiles(slug, userId);
 	if (!files) {
@@ -562,7 +563,6 @@ export async function renderLiquidRecipe(
 		${body}
 		</div>
 	</div>
-    </div>
   </body>
 </html>`;
 		return { html, settings };
@@ -596,7 +596,7 @@ export function customFieldsToParamDefinitions(
  */
 export async function isLiquidRecipe(
 	slug: string,
-	userId?: string,
+	userId: string | null,
 ): Promise<boolean> {
 	const { ready } = await checkDbConnection();
 	if (!ready) return false;

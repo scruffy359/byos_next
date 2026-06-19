@@ -21,7 +21,6 @@ if (existsSync("node_modules/puppeteer")) {
 }
 
 const nextConfig: NextConfig = {
-	/* config options here */
 	trailingSlash: false,
 	skipTrailingSlashRedirect: true,
 	cacheComponents: true,
@@ -41,7 +40,10 @@ const nextConfig: NextConfig = {
 			{ protocol: "https", hostname: "trmnl.com" },
 			{ protocol: "https", hostname: "usetrmnl.com" },
 			{ protocol: "https", hostname: "trmnl.s3.us-east-2.amazonaws.com" },
-			{ protocol: "https", hostname: "trmnl-public.s3.us-east-2.amazonaws.com" },
+			{
+				protocol: "https",
+				hostname: "trmnl-public.s3.us-east-2.amazonaws.com",
+			},
 		],
 	},
 };

@@ -9,6 +9,7 @@ import {
 	getTrmnlModelStyle,
 } from "@/lib/trmnl/model-css";
 import type { TrmnlModel } from "@/lib/trmnl/types";
+import { FormatValue } from "@/lib/types";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 /**
@@ -16,7 +17,7 @@ import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
  * produces PNG/bitmap buffers. Knows nothing about recipes or the database.
  */
 
-export type RasterizeFormat = "bitmap" | "png";
+export type RasterizeFormat = FormatValue.bmp | FormatValue.png;
 
 export type RasterizeRenderSettings = {
 	doubleSizeForSharperText?: boolean;
@@ -32,6 +33,7 @@ export type RasterizeOptions = {
 	renderSettings?: RasterizeRenderSettings | null;
 	model?: TrmnlModel | null;
 	paletteId?: string | null;
+	$timezone: string | null;
 } & (
 	| {
 			html: string;
@@ -101,17 +103,18 @@ export async function rasterize(
 		slug,
 		imageWidth,
 		imageHeight,
-		formats = ["bitmap", "png"],
+		formats = [FormatValue.bmp, FormatValue.png],
 		grayscale,
 		renderSettings,
 		model,
 		paletteId,
 		cookies,
+		$timezone,
 	} = options;
 
 	const results = defaultResults();
-	const needsPng = formats.includes("png");
-	const needsBitmap = formats.includes("bitmap");
+	const needsPng = formats.includes(FormatValue.png);
+	const needsBitmap = formats.includes(FormatValue.bmp);
 	if (!needsPng && !needsBitmap) return results;
 
 	const target = getRasterDimensions(imageWidth, imageHeight, renderSettings);
@@ -136,7 +139,11 @@ export async function rasterize(
 					imageHeight,
 					scaleFactor,
 					cookies,
-					{ model: model?.name ?? null, paletteId: paletteId ?? null },
+					{
+						model: model?.name ?? null,
+						paletteId: paletteId ?? null,
+						$timezone,
+					},
 				);
 			} else {
 				const wrapped = wrapWithTrmnlCss(
@@ -159,7 +166,7 @@ export async function rasterize(
 				imageHeight,
 				scaleFactor,
 				cookies,
-				{ model: model?.name ?? null, paletteId: paletteId ?? null },
+				{ model: model?.name ?? null, paletteId: paletteId ?? null, $timezone },
 			);
 		} else {
 			console.error(`[rasterize:${slug}] No html or element provided`);

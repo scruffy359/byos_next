@@ -1,4 +1,3 @@
-import { cache } from "react";
 import { z } from "zod";
 import { getScreenParams } from "@/app/actions/screens-params";
 import { getReactRecipeDefinition } from "@/lib/recipes/registry";
@@ -82,48 +81,54 @@ async function callGetDataWithTimeout(
 	]);
 }
 
-export const resolveReactRecipe = cache(
-	async (
-		slug: string,
-		userId?: string,
-	): Promise<ResolvedReactRecipe | null> => {
-		const definition = await getReactRecipeDefinition(slug);
-		if (!definition) return null;
+export const resolveReactRecipe = async (
+	slug: string,
+	$timezone: string, // passed into getData
+	userId: string | null,
+): Promise<ResolvedReactRecipe | null> => {
+	const definition = await getReactRecipeDefinition(slug);
+	if (!definition) return null;
 
-		// Read user-saved param overrides. Pass paramDefinitions for
-		// backwards-compatible filtering — getScreenParams uses keys to
-		// gate which fields it returns.
-		const paramDefinitions = zodObjectToParamDefinitions(
-			definition.paramsSchema,
-		);
-		const storedOverrides =
-			Object.keys(paramDefinitions).length > 0
-				? await getScreenParams(slug, paramDefinitions, userId)
-				: {};
+	// Read user-saved param overrides. Pass paramDefinitions for
+	// backwards-compatible filtering — getScreenParams uses keys to
+	// gate which fields it returns.
+	const paramDefinitions = zodObjectToParamDefinitions(definition.paramsSchema);
+	const internalValues = {
+		$timezone,
+	};
+	const storedOverrides =
+		Object.keys(paramDefinitions).length > 0
+			? await getScreenParams(slug, userId, paramDefinitions, internalValues)
+			: {};
+	const params = safeParseWithDefaults(definition.paramsSchema, {
+		...storedOverrides,
+	});
 
-		const params = safeParseWithDefaults(
-			definition.paramsSchema,
-			storedOverrides,
-		);
-
-		let data: Record<string, unknown>;
-		if (definition.getData) {
-			try {
-				const fetched = await callGetDataWithTimeout(
-					definition.getData,
-					params,
-				);
-				data = safeParseDataWithDefaults(definition.dataSchema, fetched);
-			} catch (error) {
-				console.error(`[recipe:${slug}] getData failed:`, error);
-				data = safeParseDataWithDefaults(definition.dataSchema, {});
-			}
-		} else {
-			// No fetch → render against the params themselves (parsed via
-			// dataSchema so wrappers around paramsSchema still apply).
-			data = safeParseDataWithDefaults(definition.dataSchema, params);
+	let data: Record<string, unknown>;
+	if (definition.getData) {
+		try {
+			const fetched = await callGetDataWithTimeout(definition.getData, params);
+			data = safeParseDataWithDefaults(definition.dataSchema, fetched);
+		} catch (error) {
+			console.error(`[recipe:${slug}] getData failed:`, error);
+			data = safeParseDataWithDefaults(definition.dataSchema, {});
 		}
+	} else {
+		// No fetch → render against the params themselves (parsed via
+		// dataSchema so wrappers around paramsSchema still apply).
+		data = safeParseDataWithDefaults(definition.dataSchema, params);
+	}
 
-		return { definition, params, data };
-	},
-);
+	console.trace();
+	console.log({
+		where: "resolveReactRecipe",
+		useClient: typeof window !== "undefined",
+		$timezone,
+		storedOverrides,
+		internalValues,
+		//definition,
+		params,
+		data,
+	});
+	return { definition, params, data };
+};

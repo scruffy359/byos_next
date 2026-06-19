@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
 import { type RGB, resolvePaletteColors } from "@/lib/trmnl/palette-colors";
+import { getImageFilenameExtension } from "./device-image-url";
 
 export type RenderDeviceImageInput = {
 	png: Buffer;
@@ -19,20 +20,6 @@ type Lab = {
 	a: number;
 	b: number;
 };
-
-const MIME_EXTENSION: Record<string, string> = {
-	"image/bmp": "bmp",
-	"image/png": "png",
-	"image/webp": "webp",
-};
-
-export function getImageFilenameExtension(profile: DeviceProfile): string {
-	return (
-		MIME_EXTENSION[profile.model.mime_type] ??
-		profile.model.mime_type.split("/").at(-1) ??
-		"bin"
-	);
-}
 
 function clampByte(value: number): number {
 	return Math.max(0, Math.min(255, value));

@@ -5,6 +5,7 @@ import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
+import { localTimezone } from "@/lib/utils";
 import { generateApiKey, generateFriendlyId } from "@/utils/helpers";
 
 interface LogEntry {
@@ -382,7 +383,7 @@ export async function POST(request: Request) {
 											? Number.parseInt(refreshRate, 10) * 1000
 											: 3600 * 1000),
 								).toISOString(),
-								timezone: "UTC",
+								timezone: localTimezone(),
 								battery_voltage: batteryVoltage
 									? Number.parseFloat(batteryVoltage)
 									: null,
@@ -782,7 +783,7 @@ export async function POST(request: Request) {
 												? Number.parseInt(refreshRate, 10) * 1000
 												: 3600 * 1000),
 									).toISOString(),
-									timezone: "UTC",
+									timezone: localTimezone(),
 									battery_voltage: batteryVoltage
 										? Number.parseFloat(batteryVoltage)
 										: null,

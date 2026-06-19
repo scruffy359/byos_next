@@ -15,7 +15,7 @@
 		"prebuild": "pnpm generate:sql && pnpm generate:recipes",
 		"dev": "pnpm generate:sql && pnpm generate:recipes && next dev --turbopack",
 		"build": "next build",
-		"start": "next start",
+		"start": "node .next/standalone/server.js",
 		"lint": "biome check ./app ./components ./lib ./utils ./hooks",
 		"lint:fix": "biome check --write --unsafe ./app ./components ./lib ./utils ./hooks",
 		"typecheck": "tsc --noEmit",

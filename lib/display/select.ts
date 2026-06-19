@@ -2,13 +2,17 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { buildDeviceImageUrl } from "@/lib/render/device-image-url";
+import {
+	buildDeviceImageParameters,
+	buildDeviceImageUrl,
+} from "@/lib/render/device-image-url";
 import {
 	type DeviceProfile,
 	getDeviceProfile,
 } from "@/lib/trmnl/device-profile";
 import { type GrayscaleLevel, normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import type { Device } from "@/lib/types";
+import { localTimezone } from "../utils";
 
 /**
  * Single source of truth for "what should this device display?".
@@ -59,16 +63,7 @@ function defaultDimensions(
 }
 
 export async function selectDisplayForDevice(
-	device: Pick<
-		Device,
-		| "screen"
-		| "model"
-		| "palette_id"
-		| "grayscale"
-		| "screen_orientation"
-		| "screen_width"
-		| "screen_height"
-	>,
+	device: Device,
 	hints: RequestHints,
 ): Promise<DisplaySelection> {
 	const profile = await getDeviceProfile(device.model, device.palette_id);
@@ -77,6 +72,7 @@ export async function selectDisplayForDevice(
 	const height = hints.height || fallback.height;
 	const grayscaleLevels = normalizeGrayscale(device.grayscale);
 	const screen = device.screen || "not-found";
+	const timezone = device?.timezone ?? localTimezone();
 
 	// Image URLs must be self-contained. If the URL only carried width/
 	// height/grayscale, the bitmap route would fall back to inferring model
@@ -84,10 +80,20 @@ export async function selectDisplayForDevice(
 	// caching proxy, or any tool that doesn't replay the device's headers
 	// would render against the wrong profile. `model` and `palette_id` go
 	// into the URL so the right profile is selected purely from the URL.
+	const params = buildDeviceImageParameters({
+		width,
+		height,
+		grayscale: grayscaleLevels,
+		model: profile.model.name,
+		paletteId: profile.palette?.id ?? null,
+		$timezone: timezone,
+	});
+	/*
 	const params = new URLSearchParams({
 		width: String(width),
 		height: String(height),
 		grayscale: String(grayscaleLevels),
+		$timezone: timezone,
 	});
 	if (profile.model.name) {
 		params.set("model", profile.model.name);
@@ -98,6 +104,7 @@ export async function selectDisplayForDevice(
 	if (hints.base64) {
 		params.set("base64", "true");
 	}
+		*/
 	const baseQueryParams = params.toString();
 
 	const imageUrl = buildDeviceImageUrl({

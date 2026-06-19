@@ -1,11 +1,14 @@
 import type { NextRequest } from "next/server";
 import { cache } from "react";
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
-	logger,
+} from "@/lib/recipes/constants";
+import { logger } from "@/lib/recipes/logger";
+import {
 	renderRecipeForDevice,
 	renderRecipeToImage,
 } from "@/lib/recipes/recipe-renderer";
@@ -14,6 +17,8 @@ import {
 	type DeviceProfile,
 	getDeviceProfile,
 } from "@/lib/trmnl/device-profile";
+import { FormatValue } from "@/lib/types";
+import { localTimezone } from "@/lib/utils";
 import {
 	parseRequestHeaders,
 	type RequestHeaders,
@@ -38,6 +43,9 @@ export async function GET(
 		const grayscaleParam = searchParams.get("grayscale");
 		const modelParam = searchParams.get("model");
 		const paletteParam = searchParams.get("palette_id");
+		const $timezone = searchParams.get("$timezone") || localTimezone();
+
+		console.log({ where: "/api/bitmap", slug, $timezone });
 
 		const width = widthParam ? parseInt(widthParam, 10) : DEFAULT_IMAGE_WIDTH;
 		const height = heightParam
@@ -56,7 +64,8 @@ export async function GET(
 		// Resolve the device owner so DB queries are scoped to the right user
 		const userId = headers.apiKey
 			? await resolveUserIdFromApiKey(headers.apiKey)
-			: null;
+			: // TODO: only set user when we know UI user
+				await getCurrentUserId();
 
 		// Forward cookies so browser rendering can reuse the caller's auth session.
 		const cookieHeader = req.headers.get("cookie");
@@ -76,6 +85,7 @@ export async function GET(
 				slug: recipeSlug,
 				profile,
 				userId,
+				$timezone,
 				cookies: cookieHeader || undefined,
 			});
 
@@ -83,7 +93,7 @@ export async function GET(
 				logger.warn(
 					`Failed to generate device image for ${recipeSlug}, returning fallback`,
 				);
-				return renderFallbackDeviceImage(profile);
+				return renderFallbackDeviceImage(profile, $timezone);
 			}
 
 			return new Response(new Uint8Array(image.buffer), {
@@ -91,12 +101,14 @@ export async function GET(
 			});
 		}
 
+		// render bitmap
 		const recipeBuffer = await renderRecipeBitmap(
 			recipeSlug,
 			validWidth,
 			validHeight,
 			grayscaleLevels,
 			userId,
+			$timezone,
 			cookieHeader || undefined,
 		);
 
@@ -156,6 +168,9 @@ function getImageResponseHeaders(image: {
 	size_limit_exceeded?: boolean;
 }) {
 	return {
+		"Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+		Pragma: "no-cache",
+		Expires: "0",
 		"Content-Type": image.mime_type,
 		"Content-Length": image.buffer.length.toString(),
 		...(image.size_limit_exceeded
@@ -164,39 +179,44 @@ function getImageResponseHeaders(image: {
 	};
 }
 
-const renderRecipeBitmap = cache(
-	async (
-		recipeId: string,
-		width: number,
-		height: number,
-		grayscaleLevels: number = 2,
-		userId: string | null = null,
-		cookies?: string,
-	) => {
-		const renders = await renderRecipeToImage({
-			slug: recipeId,
-			imageWidth: width,
-			imageHeight: height,
-			formats: ["bitmap"],
-			grayscale: grayscaleLevels,
-			userId,
-			cookies,
-		});
-		return renders.bitmap ?? Buffer.from([]);
-	},
-);
+const renderRecipeBitmap = async (
+	recipeId: string,
+	width: number,
+	height: number,
+	grayscaleLevels: number = 2,
+	userId: string | null = null,
+	$timezone: string,
+	cookies?: string,
+) => {
+	console.log({ where: "renderRecipeBitmap", recipeId, $timezone });
+	const renders = await renderRecipeToImage({
+		slug: recipeId,
+		imageWidth: width,
+		imageHeight: height,
+		formats: [FormatValue.bmp],
+		grayscale: grayscaleLevels,
+		userId,
+		cookies,
+		$timezone,
+	});
+	return renders.bitmap ?? Buffer.from([]);
+};
 
 const renderFallbackBitmap = cache(async () => {
 	try {
+		console.log({ where: "renderFallbackBitmap" });
 		const renders = await renderRecipeToImage({
 			slug: "not-found",
 			imageWidth: DEFAULT_IMAGE_WIDTH,
 			imageHeight: DEFAULT_IMAGE_HEIGHT,
-			formats: ["bitmap"],
+			formats: [FormatValue.bmp],
 			grayscale: 2,
+			$timezone: localTimezone(),
+			userId: null,
 		});
 
 		if (!renders.bitmap) {
+			console.log("missing bitmap");
 			throw new Error("Missing bitmap buffer for fallback");
 		}
 
@@ -217,11 +237,16 @@ const renderFallbackBitmap = cache(async () => {
 	}
 });
 
-async function renderFallbackDeviceImage(profile: DeviceProfile) {
+async function renderFallbackDeviceImage(
+	profile: DeviceProfile,
+	$timezone: string,
+) {
 	try {
 		const image = await renderRecipeForDevice({
 			slug: "not-found",
 			profile,
+			$timezone,
+			userId: null,
 		});
 
 		if (!image?.buffer.length) {

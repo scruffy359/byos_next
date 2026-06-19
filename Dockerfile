@@ -40,6 +40,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV CHROME_EXECUTABLE_PATH=/headless-shell/headless-shell
+ENV TZ=UTC
 
 # Copy Node.js binary from build stage
 COPY --from=base /usr/local/bin/node /usr/local/bin/node

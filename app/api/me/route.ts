@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logInfo } from "@/lib/logger";
+import { localTimezone } from "@/lib/utils";
 
 /**
  * GET /api/me
@@ -30,8 +31,8 @@ export async function GET(request: Request) {
 				first_name: null,
 				last_name: null,
 				locale: "en",
-				time_zone: "UTC",
-				time_zone_iana: "UTC",
+				time_zone: localTimezone(),
+				time_zone_iana: localTimezone(),
 				utc_offset: 0,
 				api_key: bearerToken || null,
 			},
