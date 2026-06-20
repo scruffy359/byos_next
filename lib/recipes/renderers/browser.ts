@@ -1,5 +1,6 @@
 import type { CookieData } from "puppeteer-core";
 import { getBrowser } from "@/lib/recipes/chrome-pool";
+import { createBrowserRenderContext } from "@/lib/recipes/render/browser-context";
 import { buildDeviceImageParameters } from "@/lib/render/device-image-url";
 
 /**
@@ -40,6 +41,9 @@ function parseCookies(
 export type RenderWithBrowserOptions = {
 	model?: string | null;
 	paletteId?: string | null;
+	userId?: string | null;
+	captureWidth?: number;
+	captureHeight?: number;
 	$timezone: string | null;
 };
 
@@ -47,7 +51,6 @@ export async function renderWithBrowser(
 	slug: string,
 	width: number,
 	height: number,
-	scale = 1,
 	cookies?: string,
 	options: RenderWithBrowserOptions = { $timezone: null },
 ): Promise<Buffer> {
@@ -63,7 +66,12 @@ export async function renderWithBrowser(
 		$timezone: options.$timezone,
 	});
 
+	if (options.userId) {
+		params.set("render_token", createBrowserRenderContext(options.userId));
+	}
 	const url = `${baseUrl}/recipes/${slug}/preview?${params.toString()}`;
+	const captureWidth = options.captureWidth ?? width;
+	const captureHeight = options.captureHeight ?? height;
 
 	console.log({ where: "renderWithBrowser", url, options });
 	const browser = await getBrowser("trusted");
@@ -90,12 +98,21 @@ export async function renderWithBrowser(
 			{ name: "prefers-color-scheme", value: "light" },
 		]);
 		await page.setViewport({
-			width: width * scale,
-			height: height * scale,
+			width: captureWidth,
+			height: captureHeight,
 			deviceScaleFactor: 1,
 		});
-		await page.goto(url, { waitUntil: "networkidle0" });
-		const screenshot = await page.screenshot({ type: "png" });
+		await page.goto(url, { waitUntil: "domcontentloaded" });
+		await page
+			.waitForNetworkIdle({ idleTime: 500, timeout: 5000 })
+			.catch(() => {
+				// Some recipes include slow third-party assets; capture the server-rendered
+				// page rather than failing the whole device render.
+			});
+		const screenshot = await page.screenshot({
+			type: "png",
+			clip: { x: 0, y: 0, width: captureWidth, height: captureHeight },
+		});
 		return Buffer.from(screenshot);
 	} finally {
 		try {

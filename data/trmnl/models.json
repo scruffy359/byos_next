@@ -2452,6 +2452,61 @@
           ]
         ]
       }
+    },
+    {
+      "name": "seeed_e1004",
+      "label": "Seeed E1004",
+      "description": "Seeed E1004",
+      "width": 1600,
+      "height": 1200,
+      "colors": 16,
+      "bit_depth": 4,
+      "scale_factor": 1.5385,
+      "rotation": 90,
+      "mime_type": "image/png",
+      "offset_x": 0,
+      "offset_y": 0,
+      "kind": "byod",
+      "palette_ids": [
+        "bw",
+        "color-6a"
+      ],
+      "preview_white_point": "true_white",
+      "image_size_limit": 92160,
+      "image_upload_supported": true,
+      "css": {
+        "classes": {
+          "device": "screen--seeed_e1004",
+          "size": "screen--lg",
+          "density": "screen--density-2x"
+        },
+        "variables": [
+          [
+            "--screen-w",
+            "1040px"
+          ],
+          [
+            "--screen-h",
+            "780px"
+          ],
+          [
+            "--pixel-ratio",
+            "1.5385"
+          ],
+          [
+            "--dither-pixel-ratio",
+            "2.0"
+          ],
+          [
+            "--ui-scale",
+            "1.0"
+          ],
+          [
+            "--gap-scale",
+            "1.0"
+          ]
+        ]
+      }
     }
   ]
 }

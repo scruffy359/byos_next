@@ -1,9 +1,15 @@
-import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
+import {
+	createDefaultRefreshSchedule,
+	DEFAULT_DEVICE_SCREEN,
+	DEFAULT_DEVICE_TIMEZONE,
+	DEVICE_SLEEP_REFRESH_SECONDS,
+	serializeRefreshSchedule,
+} from "@/lib/device/defaults";
 import { logError, logInfo } from "@/lib/logger";
 import { logger } from "@/lib/recipes/logger";
 import type {
@@ -13,8 +19,12 @@ import type {
 	TimeRange,
 } from "@/lib/types";
 import { localTimezone } from "@/lib/utils";
-import { generateApiKey, generateFriendlyId, timezones } from "@/utils/helpers";
-import { DEFAULT_SCREEN } from "./route";
+import {
+	generateApiKey,
+	generateFriendlyId,
+	generateMockMacAddress,
+	timezones,
+} from "@/utils/helpers";
 
 // --- Types ---
 
@@ -30,6 +40,7 @@ export interface RequestHeaders {
 	model: string | null;
 	specialFunction: boolean;
 	base64: boolean;
+	supportsTemperatureProfile: boolean;
 	hostUrl: string;
 }
 
@@ -52,6 +63,7 @@ export const parseRequestHeaders = (request: Request): RequestHeaders => {
 		model: headers.get("Model")?.trim() || null,
 		specialFunction: headers.get("Special-Function") === "true",
 		base64: headers.get("BASE64") === "true",
+		supportsTemperatureProfile: headers.get("temperature-profile") === "true",
 		hostUrl:
 			(headers.get("x-forwarded-proto") || "http") +
 			"://" +
@@ -60,12 +72,6 @@ export const parseRequestHeaders = (request: Request): RequestHeaders => {
 };
 
 // --- Helper Functions ---
-
-export const generateMockMacAddress = (apiKey: string): string => {
-	const hash = crypto.createHash("sha256").update(apiKey).digest("hex");
-	const macPart = hash.substring(hash.length - 6).toUpperCase();
-	return `A1:B2:C3:${macPart.substring(0, 2)}:${macPart.substring(2, 4)}:${macPart.substring(4, 6)}`;
-};
 
 export const precacheImageInBackground = (
 	imageUrl: string,
@@ -272,6 +278,7 @@ export const updateDeviceStatus = async (
 	if (device.timezone) {
 		updateData.timezone = device.timezone;
 	}
+	updateData.supports_temperature_profile = headers.supportsTemperatureProfile;
 
 	try {
 		await db
@@ -407,18 +414,18 @@ export const findOrCreateDevice = async (
 						name: `TRMNL Device ${friendly_id}`,
 						friendly_id: friendly_id,
 						api_key: apiKey,
-						refresh_schedule: JSON.stringify({
+						refresh_schedule: serializeRefreshSchedule({
 							default_refresh_rate: headers.refreshRate
 								? Number.parseInt(headers.refreshRate, 10)
-								: 60,
+								: createDefaultRefreshSchedule().default_refresh_rate,
 							time_ranges: [],
 						}),
 						last_update_time: new Date().toISOString(),
 						next_expected_update: new Date(
-							Date.now() + 3600 * 1000,
+							Date.now() + DEVICE_SLEEP_REFRESH_SECONDS * 1000,
 						).toISOString(),
 						timezone: localTimezone(),
-						screen: DEFAULT_SCREEN,
+						screen: DEFAULT_DEVICE_SCREEN,
 						model: headers.model,
 						user_id: currentUserId,
 					})
@@ -484,16 +491,15 @@ export const findOrCreateDevice = async (
 					name: `Unknown device with API ${apiKey.substring(0, 4)}...`,
 					friendly_id: friendly_id,
 					api_key: new_api_key,
-					refresh_schedule: JSON.stringify({
-						default_refresh_rate: 60,
-						time_ranges: [],
-					}),
+					refresh_schedule: serializeRefreshSchedule(
+						createDefaultRefreshSchedule(),
+					),
 					last_update_time: new Date().toISOString(),
 					next_expected_update: new Date(
-						Date.now() + 3600 * 1000,
+						Date.now() + DEVICE_SLEEP_REFRESH_SECONDS * 1000,
 					).toISOString(),
 					timezone: localTimezone(),
-					screen: DEFAULT_SCREEN,
+					screen: DEFAULT_DEVICE_SCREEN,
 					model: headers.model,
 					user_id: currentUserId,
 				})
@@ -540,16 +546,17 @@ export const buildErrorResponse = (
 	message: string,
 	baseUrl: string,
 	uniqueId: string,
+	status = 500,
 ) => {
-	const notFoundImageUrl = `${baseUrl}/not-found.bmp`;
+	const errorImageUrl = `${baseUrl}/error.png?message=${encodeURIComponent(message)}`;
 	return NextResponse.json(
 		{
-			status: 500,
+			status,
 			reset_firmware: true,
 			message,
-			image_url: notFoundImageUrl,
-			filename: `not-found_${uniqueId}.bmp`,
+			image_url: errorImageUrl,
+			filename: `error_${uniqueId}.png`,
 		},
-		{ status: 200 },
+		{ status },
 	);
 };

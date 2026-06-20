@@ -13,7 +13,7 @@ import { db } from "@/lib/database/db";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logger } from "./logger";
-import { RecipeParamDefinitions } from "./zod-form";
+import type { RecipeParamDefinitions } from "./zod-form";
 
 const TRMNL_CSS_URL = "https://trmnl.com/css/latest/plugins.css";
 const TRMNL_JS_URL = "https://trmnl.com/js/latest/plugins.js";

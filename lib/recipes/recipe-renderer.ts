@@ -1,5 +1,4 @@
 import { createElement } from "react";
-import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
 import {
 	type RenderDeviceImageResult,
 	renderDeviceImage,
@@ -63,8 +62,7 @@ type RenderRecipeArgs = {
 };
 
 /**
- * Resolve a recipe (React or liquid) and rasterize it. Returns
- * `{ bitmap: null, png: null }` when nothing renders.
+ * Resolve a recipe (React or liquid) and rasterize it.
  */
 export async function renderRecipeToImage({
 	slug,
@@ -102,6 +100,7 @@ export async function renderRecipeToImage({
 			cookies,
 			model,
 			paletteId,
+			userId,
 			renderSettings: definition.meta.renderSettings ?? null,
 			$timezone,
 		});
@@ -115,7 +114,7 @@ export async function renderRecipeToImage({
 			userId ?? (await getCurrentUserId()),
 		);
 		if (html === null) {
-			return rasterizeNotFound({ slug, imageWidth, imageHeight, formats });
+			throw new Error(`Liquid recipe ${slug} did not produce HTML`);
 		}
 		return rasterize({
 			slug,
@@ -128,29 +127,46 @@ export async function renderRecipeToImage({
 			model,
 			paletteId,
 			renderSettings: null,
+			userId,
 			$timezone,
 		});
 	}
 
 	// Unknown slug
-	return rasterizeNotFound({ slug, imageWidth, imageHeight, formats });
+	throw new Error(`Unknown recipe: ${slug}`);
 }
 
 export async function renderRecipeForDevice({
 	slug,
 	profile,
+	width,
+	height,
 	userId,
 	cookies,
 	$timezone,
 }: {
 	slug: string;
 	profile: DeviceProfile;
+	width?: number;
+	height?: number;
 	userId: string | null;
 	cookies?: string;
 	$timezone: string;
 }): Promise<RenderDeviceImageResult | null> {
+	const renderProfile =
+		width !== undefined || height !== undefined
+			? {
+					...profile,
+					model: {
+						...profile.model,
+						width: width ?? profile.model.width,
+						height: height ?? profile.model.height,
+					},
+				}
+			: profile;
 	console.log({
 		where: "renderRecipeForDevice",
+		renderProfile,
 		$timezone,
 	});
 	const renders = await renderRecipeToImage({
@@ -161,12 +177,12 @@ export async function renderRecipeForDevice({
 		userId,
 		cookies,
 		$timezone,
-		model: profile.model,
-		paletteId: profile.palette?.id ?? null,
+		model: renderProfile.model,
+		paletteId: renderProfile.palette?.id ?? null,
 	});
 
 	if (!renders.png) return null;
-	return renderDeviceImage({ png: renders.png, profile });
+	return renderDeviceImage({ png: renders.png, profile: renderProfile });
 }
 
 async function buildLiquidHtml(
@@ -183,31 +199,4 @@ async function buildLiquidHtml(
 	}
 	const result = await renderLiquidRecipe(slug, userId, customFieldOverrides);
 	return result?.html ?? null;
-}
-
-async function rasterizeNotFound({
-	slug,
-	imageWidth,
-	imageHeight,
-	formats,
-}: {
-	slug: string;
-	imageWidth: number;
-	imageHeight: number;
-	formats: RasterizeFormat[];
-}): Promise<RasterizeResults> {
-	const element = createElement(NotFoundScreen, {
-		slug,
-		width: imageWidth,
-		height: imageHeight,
-	});
-	return rasterize({
-		slug,
-		element,
-		imageWidth,
-		imageHeight,
-		formats,
-		renderSettings: null,
-		$timezone: null,
-	});
 }

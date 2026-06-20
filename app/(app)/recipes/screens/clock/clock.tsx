@@ -75,7 +75,7 @@ export default function Clock({
 	const isHalfScreen = width === 400 && height === 480;
 	const fontSizes = fontSizesForWidth(width);
 	return (
-		<PreSatori useDoubling={useDoubling} width={width} height={height}>
+		<PreSatori width={width} height={height}>
 			<div className="relative w-full h-full p-4 bg-black flex flex-col text-white">
 				<div
 					className={`w-full h-full flex p-4 items-center justify-between ${isHalfScreen ? "flex-col" : "flex-col sm:flex-col"}`}
@@ -106,7 +106,7 @@ export const definition: RecipeDefinition<
 		version: "0.1.0",
 		createdAt: "2026-06-12T00:00:00Z",
 		updatedAt: "2026-06-12T00:00:00Z",
-		renderSettings: { doubleSizeForSharperText: useDoubling },
+		renderSettings: { supersample: useDoubling },
 	},
 	paramsSchema,
 	dataSchema,

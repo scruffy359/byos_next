@@ -32,12 +32,17 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+	DEFAULT_DEVICE_SCREEN,
+	UI_REFRESH_FALLBACK_SECONDS,
+} from "@/lib/device/defaults";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
 import { buildDeviceImageParameters } from "@/lib/render/device-image-url";
+import { type DeviceSizePreset } from "@/lib/trmnl/device-presets";
 import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import {
 	DEFAULT_MODEL_NAME,
@@ -47,14 +52,6 @@ import {
 import type { Device, Mixup, Playlist } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatTimezone, timezones } from "@/utils/helpers";
-
-const DEVICE_SIZE_PRESETS = {
-	"800x480": { width: 800, height: 480 },
-	"1872x1404": { width: 1872, height: 1404 },
-	custom: null,
-} as const;
-
-type DeviceSizePreset = keyof typeof DEVICE_SIZE_PRESETS;
 
 interface DeviceEditFormProps {
 	editedDevice: Device & { status?: string; type?: string };
@@ -152,14 +149,11 @@ export default function DeviceEditForm({
 			? trmnlModels.find((model) => model.name === savedModelName)
 			: null;
 	const selectedModel =
-		savedModelMatch ??
-		trmnlModels.find((model) => model.name === DEFAULT_MODEL_NAME) ??
-		trmnlModels[0];
-	const modelFellBack =
-		savedModelName != null &&
-		!savedModelMatch &&
-		selectedModel != null &&
-		selectedModel.name !== savedModelName;
+		savedModelName != null
+			? savedModelMatch
+			: (trmnlModels.find((model) => model.name === DEFAULT_MODEL_NAME) ??
+				trmnlModels[0]);
+	const hasUnknownModel = savedModelName != null && !savedModelMatch;
 	const selectedPaletteIds = selectedModel?.palette_ids ?? [];
 	const selectedPalette =
 		trmnlPalettes.find((palette) => palette.id === editedDevice.palette_id) ??
@@ -173,7 +167,7 @@ export default function DeviceEditForm({
 		return Array.from(set).sort((a, b) => a - b);
 	}, [selectedPaletteIds]);
 	// Show the toggle only when the model offers a real choice (≥ 2 levels).
-	// One-level models (e.g. seeed_e1002 has only `bw`) get clamped silently below.
+	// One-level models (e.g. seeed_e1002 has only `bw`) are synchronized below.
 	const showGrayscaleField = availableGrayscaleLevels.length > 1;
 
 	useEffect(() => {
@@ -184,31 +178,15 @@ export default function DeviceEditForm({
 			onSelectChange("grayscale", String(next));
 		}
 	}, [availableGrayscaleLevels, grayscaleLevels, onSelectChange]);
-	const imageExtension = getModelImageExtension(selectedModel);
+	const imageExtension = getModelImageExtension(selectedModel ?? undefined);
 	const deviceImageParams = buildDeviceImageParameters({
 		width: deviceWidth,
 		height: deviceHeight,
 		grayscale: grayscaleLevels,
-		model: selectedModel?.name,
+		model: selectedModel?.name ?? null,
 		paletteId: selectedPalette?.id ?? null,
 		$timezone: editedDevice.timezone,
 	});
-
-	/*
-	const profileQuery = new URLSearchParams({
-		width: String(deviceWidth),
-		height: String(deviceHeight),
-		grayscale: String(grayscaleLevels),
-	});
-	if (selectedModel?.name) {
-		profileQuery.set("model", selectedModel.name);
-	}
-	if (selectedPalette?.id) {
-		profileQuery.set("palette_id", selectedPalette.id);
-	}
-	*/
-
-	const urlQuery = deviceImageParams.toString();
 
 	const isMixup =
 		editedDevice.display_mode === DeviceDisplayMode.MIXUP &&
@@ -216,26 +194,38 @@ export default function DeviceEditForm({
 	const isPlaylist =
 		editedDevice.display_mode === DeviceDisplayMode.PLAYLIST &&
 		!!editedDevice.playlist_id;
+	const isScreenMissing = !editedDevice.screen && !isMixup && !isPlaylist;
 
-	const heroSrc = isMixup
-		? `/api/bitmap/mixup/${editedDevice.mixup_id}.${imageExtension}?${urlQuery}`
-		: `/api/bitmap/${editedDevice?.screen || "simple-text"}.${imageExtension}?${urlQuery}`;
+	const heroSrc =
+		selectedModel && !hasUnknownModel && !isScreenMissing
+			? isMixup
+				? `/api/bitmap/mixup/${editedDevice.mixup_id}.${imageExtension}?${deviceImageParams}`
+				: `/api/bitmap/${editedDevice.screen}.${imageExtension}?${deviceImageParams}`
+			: null;
 
 	return (
 		<form onSubmit={onSubmit}>
 			<div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
 				{/* Hero preview — left column, sticky on lg */}
 				<section className="flex flex-col overflow-hidden rounded-2xl border bg-card lg:sticky lg:top-4 lg:self-start">
-					{modelFellBack && (
+					{hasUnknownModel && (
 						<Alert className="rounded-none border-x-0 border-t-0 bg-muted/40 py-3 text-xs">
 							<AlertTriangle />
-							<AlertTitle>Unknown model — using fallback</AlertTitle>
+							<AlertTitle>Unknown model</AlertTitle>
 							<AlertDescription>
 								Saved model <code className="font-mono">{savedModelName}</code>{" "}
-								isn't in the local TRMNL registry. Previewing as{" "}
-								<code className="font-mono">{selectedModel?.name}</code>. Pick
-								the matching model in the Display tab to fix the rendering
-								profile.
+								isn't in the local TRMNL registry. Pick a supported model in the
+								Display tab to restore previews and device rendering.
+							</AlertDescription>
+						</Alert>
+					)}
+					{isScreenMissing && (
+						<Alert className="rounded-none border-x-0 border-t-0 bg-muted/40 py-3 text-xs">
+							<AlertTriangle />
+							<AlertTitle>Screen not configured</AlertTitle>
+							<AlertDescription>
+								Select a screen in the Content tab to restore previews and
+								device rendering.
 							</AlertDescription>
 						</Alert>
 					)}
@@ -258,6 +248,10 @@ export default function DeviceEditForm({
 						{isPlaylist ? (
 							<div className="text-center text-sm text-muted-foreground">
 								Playlist mode — preview shows on the device when saved.
+							</div>
+						) : !heroSrc ? (
+							<div className="max-w-sm text-center text-sm text-muted-foreground">
+								Preview unavailable until the display configuration is complete.
 							</div>
 						) : (
 							<div
@@ -292,7 +286,9 @@ export default function DeviceEditForm({
 									: "—"}
 							</MetaRow>
 							<MetaRow label="Refresh">
-								{editedDevice?.refresh_schedule?.default_refresh_rate || 300}s
+								{editedDevice?.refresh_schedule?.default_refresh_rate ||
+									UI_REFRESH_FALLBACK_SECONDS}
+								s
 							</MetaRow>
 						</div>
 					</div>
@@ -517,19 +513,16 @@ export default function DeviceEditForm({
 								<Field
 									label="Screen component"
 									htmlFor="screen"
-									hint="If unset, the default screen will be used."
+									hint={`Default selection is ${DEFAULT_DEVICE_SCREEN}.`}
 								>
 									<Select
 										value={editedDevice?.screen || ""}
-										onValueChange={(value) =>
-											onScreenChange(value === "none" ? null : value)
-										}
+										onValueChange={(value) => onScreenChange(value)}
 									>
 										<SelectTrigger id="screen" className="w-full">
 											<SelectValue placeholder="Select screen…" />
 										</SelectTrigger>
 										<SelectContent>
-											<SelectItem value="none">None (use default)</SelectItem>
 											{availableScreens.map((screen) => (
 												<SelectItem key={screen.id} value={screen.id}>
 													{screen.title}
@@ -696,6 +689,28 @@ export default function DeviceEditForm({
 									</ToggleGroup>
 								</Field>
 							)}
+
+							{editedDevice.supports_temperature_profile && (
+								<Field
+									label="Temperature profile"
+									hint="Try A then B if the display looks washed out."
+								>
+									<ToggleGroup
+										type="single"
+										value={editedDevice.temperature_profile ?? "default"}
+										onValueChange={(value) => {
+											if (value) onSelectChange("temperature_profile", value);
+										}}
+										variant="outline"
+										className="grid w-fit grid-cols-4"
+									>
+										<ToggleGroupItem value="default">Default</ToggleGroupItem>
+										<ToggleGroupItem value="a">A</ToggleGroupItem>
+										<ToggleGroupItem value="b">B</ToggleGroupItem>
+										<ToggleGroupItem value="c">C</ToggleGroupItem>
+									</ToggleGroup>
+								</Field>
+							)}
 						</TabsContent>
 
 						<TabsContent value="refresh" className="mt-4 space-y-4">
@@ -709,7 +724,8 @@ export default function DeviceEditForm({
 									name="refresh_schedule.default_refresh_rate"
 									type="number"
 									value={
-										editedDevice?.refresh_schedule?.default_refresh_rate || 300
+										editedDevice?.refresh_schedule?.default_refresh_rate ||
+										UI_REFRESH_FALLBACK_SECONDS
 									}
 									onChange={onInputChange}
 								/>

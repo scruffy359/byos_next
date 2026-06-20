@@ -2,6 +2,7 @@ import type React from "react";
 import { createElement } from "react";
 import sharp from "sharp";
 import { renderHtmlToImage } from "@/lib/recipes/html-screenshot";
+import { getRenderScale } from "@/lib/recipes/render/settings";
 import { renderWithSatori } from "@/lib/recipes/renderers/satori";
 import { renderWithTakumi } from "@/lib/recipes/renderers/takumi";
 import {
@@ -11,6 +12,7 @@ import {
 import type { TrmnlModel } from "@/lib/trmnl/types";
 import { FormatValue } from "@/lib/types";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
+import type { RecipeRenderSettings } from "../types";
 
 /**
  * Pure rasterization: takes either an HTML string or a React element and
@@ -19,20 +21,16 @@ import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 export type RasterizeFormat = FormatValue.bmp | FormatValue.png;
 
-export type RasterizeRenderSettings = {
-	doubleSizeForSharperText?: boolean;
-	applyEdgeSnap?: boolean;
-};
-
 export type RasterizeOptions = {
 	slug: string;
 	imageWidth: number;
 	imageHeight: number;
 	formats?: RasterizeFormat[];
 	grayscale?: number;
-	renderSettings?: RasterizeRenderSettings | null;
+	renderSettings?: RecipeRenderSettings | null;
 	model?: TrmnlModel | null;
 	paletteId?: string | null;
+	userId: string | null;
 	$timezone: string | null;
 } & (
 	| {
@@ -63,10 +61,9 @@ const defaultResults = (): RasterizeResults => ({ bitmap: null, png: null });
 function getRasterDimensions(
 	width: number,
 	height: number,
-	settings: RasterizeRenderSettings | null | undefined,
+	settings: RecipeRenderSettings | null | undefined,
 ) {
-	const useDoubling = settings?.doubleSizeForSharperText ?? false;
-	const scaleFactor = useDoubling ? 2 : 1;
+	const scaleFactor = getRenderScale(settings);
 	return { width: width * scaleFactor, height: height * scaleFactor };
 }
 
@@ -96,6 +93,28 @@ function wrapWithTrmnlCss(
 	);
 }
 
+function wrapWithRenderScale(
+	element: React.ReactElement,
+	width: number,
+	height: number,
+	scale: number,
+): React.ReactElement {
+	if (scale === 1) return element;
+	return createElement(
+		"div",
+		{
+			style: {
+				display: "flex",
+				width,
+				height,
+				transform: `scale(${scale})`,
+				transformOrigin: "top left",
+			},
+		},
+		element,
+	);
+}
+
 export async function rasterize(
 	options: RasterizeOptions,
 ): Promise<RasterizeResults> {
@@ -108,6 +127,7 @@ export async function rasterize(
 		renderSettings,
 		model,
 		paletteId,
+		userId,
 		cookies,
 		$timezone,
 	} = options;
@@ -117,6 +137,7 @@ export async function rasterize(
 	const needsBitmap = formats.includes(FormatValue.bmp);
 	if (!needsPng && !needsBitmap) return results;
 
+	const renderScale = getRenderScale(renderSettings);
 	const target = getRasterDimensions(imageWidth, imageHeight, renderSettings);
 
 	let pngBuffer: Buffer;
@@ -132,22 +153,29 @@ export async function rasterize(
 			const rendererType = getRendererType();
 			if (rendererType === "browser") {
 				const { renderWithBrowser } = await import("../renderers/browser");
-				const scaleFactor = target.width / imageWidth;
 				pngBuffer = await renderWithBrowser(
 					slug,
 					imageWidth,
 					imageHeight,
-					scaleFactor,
 					cookies,
 					{
 						model: model?.name ?? null,
 						paletteId: paletteId ?? null,
+						userId,
+						captureWidth: target.width,
+						captureHeight: target.height,
 						$timezone,
 					},
 				);
 			} else {
-				const wrapped = wrapWithTrmnlCss(
+				const scaled = wrapWithRenderScale(
 					options.element,
+					imageWidth,
+					imageHeight,
+					renderScale,
+				);
+				const wrapped = wrapWithTrmnlCss(
+					scaled,
 					model ?? null,
 					target.width,
 					target.height,
@@ -159,14 +187,19 @@ export async function rasterize(
 			}
 		} else if ("browser" in options && options.browser) {
 			const { renderWithBrowser } = await import("../renderers/browser");
-			const scaleFactor = target.width / imageWidth;
 			pngBuffer = await renderWithBrowser(
 				slug,
 				imageWidth,
 				imageHeight,
-				scaleFactor,
 				cookies,
-				{ model: model?.name ?? null, paletteId: paletteId ?? null, $timezone },
+				{
+					model: model?.name ?? null,
+					paletteId: paletteId ?? null,
+					userId,
+					captureWidth: target.width,
+					captureHeight: target.height,
+					$timezone,
+				},
 			);
 		} else {
 			console.error(`[rasterize:${slug}] No html or element provided`);

@@ -1,7 +1,7 @@
 import { revalidateTag } from "next/cache";
-import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { cache } from "react";
 import {
 	getScreenParams,
@@ -135,7 +135,7 @@ export default async function RecipePage({
 	params: Promise<{ slug: string }>;
 	searchParams: Promise<{ orientation?: string; format?: string }>;
 }) {
-	headers();
+	await connection();
 	const { slug } = await params;
 	const { orientation, format = DefaultFormat } = await searchParams;
 	console.log({
@@ -185,10 +185,10 @@ export default async function RecipePage({
 									{meta.description}
 								</p>
 							)}
-							{meta.renderSettings?.doubleSizeForSharperText && (
+							{meta.renderSettings?.supersample && (
 								<p className="mt-1 text-xs text-muted-foreground max-w-prose">
-									Rendering at double size for sharper text — some layouts with
-									overflow-hidden may need adjustment.
+									Supersampling enabled: image renders at 2× resolution, then
+									downsamples to the selected device size.
 								</p>
 							)}
 						</>

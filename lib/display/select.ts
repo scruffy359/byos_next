@@ -48,17 +48,13 @@ function defaultDimensions(
 	device: Pick<Device, "screen_orientation" | "screen_width" | "screen_height">,
 ): { width: number; height: number } {
 	const orientation = device.screen_orientation || "landscape";
-	const fallbackWidth =
-		orientation === "landscape"
-			? device.screen_width || DEFAULT_IMAGE_WIDTH
-			: device.screen_height || DEFAULT_IMAGE_HEIGHT;
-	const fallbackHeight =
-		orientation === "landscape"
-			? device.screen_height || DEFAULT_IMAGE_HEIGHT
-			: device.screen_width || DEFAULT_IMAGE_WIDTH;
+	const deviceWidth =
+		orientation === "landscape" ? device.screen_width : device.screen_height;
+	const deviceHeight =
+		orientation === "landscape" ? device.screen_height : device.screen_width;
 	return {
-		width: profile.model.width || fallbackWidth,
-		height: profile.model.height || fallbackHeight,
+		width: deviceWidth || profile.model.width || DEFAULT_IMAGE_WIDTH,
+		height: deviceHeight || profile.model.height || DEFAULT_IMAGE_HEIGHT,
 	};
 }
 
@@ -67,16 +63,19 @@ export async function selectDisplayForDevice(
 	hints: RequestHints,
 ): Promise<DisplaySelection> {
 	const profile = await getDeviceProfile(device.model, device.palette_id);
-	const fallback = defaultDimensions(profile, device);
-	const width = hints.width || fallback.width;
-	const height = hints.height || fallback.height;
+	const dimensions = defaultDimensions(profile, device);
+	const width = hints.width || dimensions.width;
+	const height = hints.height || dimensions.height;
 	const grayscaleLevels = normalizeGrayscale(device.grayscale);
-	const screen = device.screen || "not-found";
 	const timezone = device?.timezone ?? localTimezone();
+	if (!device.screen) {
+		throw new Error("Device screen is not configured");
+	}
+	const screen = device.screen ?? "not-found";
 
 	// Image URLs must be self-contained. If the URL only carried width/
-	// height/grayscale, the bitmap route would fall back to inferring model
-	// and palette from request headers — and a fetch from a browser, a
+	// height/grayscale, the bitmap route would infer model and palette from
+	// request headers — and a fetch from a browser, a
 	// caching proxy, or any tool that doesn't replay the device's headers
 	// would render against the wrong profile. `model` and `palette_id` go
 	// into the URL so the right profile is selected purely from the URL.

@@ -15,10 +15,9 @@ import {
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { buildDeviceImageParameters } from "@/lib/render/device-image-url";
+import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import { FormatValue } from "@/lib/types";
 import { cn, localTimezone } from "@/lib/utils";
-
-const DEFAULT_MODEL_NAME = "og_plus";
 
 type PreviewModel = {
 	name: string;

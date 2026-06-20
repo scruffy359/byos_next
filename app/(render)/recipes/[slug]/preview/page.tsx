@@ -1,8 +1,7 @@
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { cache, use } from "react";
 import { getScreenParams } from "@/app/actions/screens-params";
-import { getCurrentUserId } from "@/lib/auth/get-user";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import LiquidPreview from "@/lib/recipes/liquid-preview";
@@ -11,12 +10,16 @@ import {
 	fetchLiquidRecipeSettings,
 	renderLiquidRecipe,
 } from "@/lib/recipes/liquid-renderer";
+import { consumeBrowserRenderContext } from "@/lib/recipes/render/browser-context";
+import { getRenderScale } from "@/lib/recipes/render/settings";
 import { resolveReactRecipe } from "@/lib/recipes/runtime/react";
+import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import {
 	getTrmnlModelClassName,
 	getTrmnlModelStyle,
 } from "@/lib/trmnl/model-css";
 import { findModel } from "@/lib/trmnl/registry";
+
 import { FormatValue } from "@/lib/types";
 import { localTimezone } from "@/lib/utils";
 
@@ -124,21 +127,25 @@ export default async function RecipePreviewPage({
 		height?: string;
 		model?: string;
 		palette_id?: string;
+		render_token?: string;
 		$timezone?: string;
 	}>;
 }) {
-	const requestHeaders = await headers();
+	await connection();
 	const { slug } = await params;
 	const {
 		width: widthParam,
 		height: heightParam,
 		model: modelParam,
+		palette_id: paletteParam,
+		render_token: renderToken,
 		$timezone: $timezoneParam,
 	} = await searchParams;
+	const userId = consumeBrowserRenderContext(renderToken);
 
 	console.log({
 		where: "RecipePreviewPage",
-		url: requestHeaders.get("next-url"),
+		userId,
 		slug,
 		$timezoneParam,
 		useClient: typeof window !== "undefined",
@@ -154,24 +161,50 @@ export default async function RecipePreviewPage({
 	if (resolved) {
 		const { definition, params: parsedParams, data } = resolved;
 		const Component = definition.Component;
+		const renderScale = getRenderScale(definition.meta.renderSettings ?? null);
 
-		const model = modelParam ? await findModel(modelParam) : null;
-		const className = getTrmnlModelClassName(model);
-		const style = getTrmnlModelStyle(model);
+		const profile =
+			modelParam || paletteParam
+				? await getDeviceProfile(modelParam, paletteParam)
+				: null;
+		const className = getTrmnlModelClassName(profile?.model);
+		const style = getTrmnlModelStyle(profile?.model);
 
-		const rendered = (
-			<ScaledToFit imageWidth={width} imageHeight={height}>
-				<Component
-					width={width}
-					height={height}
-					params={parsedParams}
-					data={data}
-				/>
-			</ScaledToFit>
+		const recipe = (
+			<Component
+				width={width}
+				height={height}
+				params={parsedParams}
+				data={data}
+			/>
 		);
+		const rendered =
+			renderScale === 1 ? (
+				recipe
+			) : (
+				<div
+					style={{
+						display: "flex",
+						width,
+						height,
+						transform: `scale(${renderScale})`,
+						transformOrigin: "top left",
+					}}
+				>
+					{recipe}
+				</div>
+			);
 		if (!className && !style) return rendered;
 		return (
-			<div className={className || undefined} style={style}>
+			<div
+				className={className || undefined}
+				style={{
+					width: width ? width * renderScale : undefined,
+					height: height ? height * renderScale : undefined,
+					display: "flex",
+					...style,
+				}}
+			>
 				{rendered}
 			</div>
 		);
@@ -181,7 +214,6 @@ export default async function RecipePreviewPage({
 	const liquidMeta = await fetchLiquidRecipeMeta(slug);
 	if (!liquidMeta) notFound();
 
-	const userId = await getCurrentUserId();
 	const liquidSettings = await fetchLiquidRecipeSettings(slug, userId);
 	const customFields = liquidSettings?.custom_fields ?? [];
 	const paramDefinitions = customFieldsToParamDefinitions(customFields);

@@ -15,14 +15,8 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import {
-	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH,
-} from "@/lib/recipes/constants";
-import {
-	buildDeviceImageParameters,
-	buildDeviceImageUrlWithImageType,
-} from "@/lib/render/device-image-url";
+import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
+import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import type { Device, SystemLog } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";
@@ -30,54 +24,6 @@ import { formatDate, getDeviceStatus } from "@/utils/helpers";
 interface DashboardClientPageProps {
 	devices: Device[];
 	systemLogs: SystemLog[];
-}
-
-type DeviceData = {
-	url: string;
-	isPortrait: boolean;
-	width: number;
-	height: number;
-	screenName: string | null;
-};
-function getDeviceData(device: Device | null): DeviceData | null {
-	if (!device) {
-		return null;
-	}
-
-	const isPortrait = device?.screen_orientation === "portrait";
-	const deviceWidth = isPortrait
-		? device?.screen_height || DEFAULT_IMAGE_HEIGHT
-		: device?.screen_width || DEFAULT_IMAGE_WIDTH;
-	const deviceHeight = isPortrait
-		? device?.screen_width || DEFAULT_IMAGE_WIDTH
-		: device?.screen_height || DEFAULT_IMAGE_HEIGHT;
-
-	const deviceImageParams = buildDeviceImageParameters({
-		width: deviceWidth,
-		height: deviceHeight,
-		paletteId: null,
-		model: device.model,
-		grayscale: null,
-		$timezone: device.timezone,
-	});
-
-	const screenName = device.screen;
-
-	const deviceImageUrl = buildDeviceImageUrlWithImageType({
-		baseUrl: "",
-		imagePath: "api/bitmap",
-		screenName: screenName ?? "not-found",
-		imageType: "bmp",
-		query: deviceImageParams.toString(),
-	});
-
-	return {
-		url: deviceImageUrl,
-		isPortrait,
-		width: deviceWidth,
-		height: deviceHeight,
-		screenName,
-	};
 }
 
 export default function DashboardClientPage({
@@ -101,7 +47,10 @@ export default function DashboardClientPage({
 				)[0]
 			: null;
 
-	const deviceData = getDeviceData(lastUpdatedDevice);
+	const latestScreenSrc = lastUpdatedDevice
+		? buildLatestScreenSrc(lastUpdatedDevice)
+		: "";
+	const isPortrait = lastUpdatedDevice?.screen_orientation === "portrait";
 
 	return (
 		<div className="space-y-4">
@@ -131,17 +80,17 @@ export default function DashboardClientPage({
 					</header>
 
 					<div className="flex flex-1 items-center justify-center bg-[radial-gradient(circle_at_50%_0%,theme(colors.muted/40),transparent_70%)] p-6">
-						{deviceData ? (
+						{lastUpdatedDevice ? (
 							<div
 								className={cn(
 									"w-full",
-									deviceData.isPortrait ? "max-w-[260px]" : "max-w-[520px]",
+									isPortrait ? "max-w-[260px]" : "max-w-[520px]",
 								)}
 							>
-								<DeviceFrame size="lg" portrait={deviceData.isPortrait}>
+								<DeviceFrame size="lg" portrait={isPortrait}>
 									<Image
-										src={deviceData.url}
-										alt={`${deviceData.screenName} screen`}
+										src={latestScreenSrc}
+										alt={`${lastUpdatedDevice.screen} screen`}
 										fill
 										className="absolute inset-0 h-full w-full object-cover"
 										style={{ imageRendering: "pixelated" }}
@@ -282,6 +231,25 @@ export default function DashboardClientPage({
 			</section>
 		</div>
 	);
+}
+
+function buildLatestScreenSrc(device: Device): string {
+	const params = new URLSearchParams({
+		grayscale: String(normalizeGrayscale(device.grayscale)),
+		model: device.model?.trim() || DEFAULT_MODEL_NAME,
+	});
+	const paletteId = device.palette_id?.trim();
+	if (paletteId) {
+		params.set("palette_id", paletteId);
+	}
+
+	if (!device.screen) {
+		params.set("message", "Device screen is not configured");
+		return `/api/bitmap/error.png?${params.toString()}`;
+	}
+	params.set("$timezone", device.timezone);
+
+	return `/api/bitmap/${device.screen}.png?${params.toString()}`;
 }
 
 function Stat({

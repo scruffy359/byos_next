@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
+import { isHalfScreenLayout } from "@/lib/recipes/layout";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
 import getWeatherDataInternal from "./getData";
@@ -25,6 +30,20 @@ export const paramsSchema = z.object({
 		.default("San Francisco")
 		.describe("City or place name to fetch weather for")
 		.meta({ title: "Location", placeholder: "San Francisco" }),
+	latitude: z
+		.number()
+		.default(0)
+		.describe(
+			"Optional exact latitude; when set with longitude, skips geocoding",
+		)
+		.meta({ title: "Latitude" }),
+	longitude: z
+		.number()
+		.default(0)
+		.describe(
+			"Optional exact longitude; when set with latitude, skips geocoding",
+		)
+		.meta({ title: "Longitude" }),
 });
 
 export const dataSchema = z.object({
@@ -76,8 +95,8 @@ export default function Weather({
 	pressure = "Loading...",
 	sunset = "Loading...",
 	sunrise = "Loading...",
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 }: WeatherProps) {
 	// Weather statistics
 	const weatherStats = [
@@ -103,7 +122,7 @@ export default function Weather({
 		return CloudIcon; // default
 	};
 
-	const isHalfScreen = width === 400 && height === 480;
+	const isHalfScreen = isHalfScreenLayout(width, height);
 
 	return (
 		<PreSatori width={width} height={height}>
@@ -183,7 +202,11 @@ export const definition: RecipeDefinition<
 	paramsSchema,
 	dataSchema,
 	getData: async (params) => {
-		const data = await getWeatherDataInternal({ location: params.location });
+		const data = await getWeatherDataInternal({
+			location: params.location,
+			latitude: params.latitude,
+			longitude: params.longitude,
+		});
 		return data as z.infer<typeof dataSchema>;
 	},
 	Component: ({ width, height, data }) => (

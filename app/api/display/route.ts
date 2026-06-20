@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
+import {
+	DISPLAY_FALLBACK_REFRESH_SECONDS,
+	normalizeRefreshSchedule,
+} from "@/lib/device/defaults";
 import { selectDisplayForDevice } from "@/lib/display/select";
 import { getLatestFirmware, isUpdateAvailable } from "@/lib/firmware";
 import { logError, logInfo } from "@/lib/logger";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import {
 	buildDeviceImageFilename,
-	buildDeviceImageParameters,
 	buildDeviceImageUrl,
 } from "@/lib/render/device-image-url";
-import { getDeviceProfile } from "@/lib/trmnl/device-profile";
-import type { RefreshSchedule } from "@/lib/types";
 import { localTimezone } from "@/lib/utils";
 import {
 	buildDisplayResponse,
@@ -24,8 +25,13 @@ import {
 	updateDeviceStatus,
 } from "./utils";
 
-export const DEFAULT_SCREEN = "album";
-export const DEFAULT_REFRESH_RATE = 180;
+export const DEFAULT_REFRESH_RATE = DISPLAY_FALLBACK_REFRESH_SECONDS;
+
+function errorImageQuery(baseQueryParams: string, message: string): string {
+	const params = new URLSearchParams(baseQueryParams);
+	params.set("message", message);
+	return params.toString();
+}
 
 export async function GET(request: Request) {
 	const headers = parseRequestHeaders(request);
@@ -44,34 +50,10 @@ export async function GET(request: Request) {
 		Date.now().toString(36).slice(-3);
 
 	if (!ready) {
-		logInfo("Database not available, falling back to default screen", {
+		logError("Database not available for display request", {
 			source: "api/display",
 		});
-		const profile = await getDeviceProfile(headers.model);
-		const width = headers.width || profile.model.width;
-		const height = headers.height || profile.model.height;
-
-		const noDbParams = buildDeviceImageParameters({
-			width,
-			height,
-			grayscale: 2,
-			model: profile.model.name,
-			paletteId: profile.palette?.id ?? null,
-			$timezone: localTimezone(),
-		});
-		//if (headers.base64) noDbParams.set("base64", "true");
-		const noDbQueryParams = noDbParams.toString();
-
-		return buildDisplayResponse(
-			buildDeviceImageUrl({
-				baseUrl,
-				imagePath: DEFAULT_SCREEN,
-				profile,
-				query: noDbQueryParams,
-			}),
-			buildDeviceImageFilename(DEFAULT_SCREEN, uniqueId, profile),
-			DEFAULT_REFRESH_RATE,
-		);
+		return buildErrorResponse("Database not available", baseUrl, uniqueId, 503);
 	}
 
 	logInfo("Display API Request", {
@@ -120,22 +102,43 @@ export async function GET(request: Request) {
 							.where("id", "=", device.id.toString())
 							.execute();
 					} else {
-						logInfo("No active playlist item found, using fallback", {
+						logInfo("No active playlist item found", {
 							source: "api/display",
 							metadata: { deviceId: device.friendly_id },
 						});
-						screenToDisplay = device.screen || "not-found";
-						dynamicRefreshRate = 60;
+						screenToDisplay = "error";
+						imageUrl = buildDeviceImageUrl({
+							baseUrl,
+							imagePath: "error",
+							profile: selection.profile,
+							query: errorImageQuery(
+								selection.baseQueryParams,
+								"No active playlist item",
+							),
+						});
+						dynamicRefreshRate = DEFAULT_REFRESH_RATE;
 					}
 				} else {
-					dynamicRefreshRate = 180;
+					screenToDisplay = "error";
+					imageUrl = buildDeviceImageUrl({
+						baseUrl,
+						imagePath: "error",
+						profile: selection.profile,
+						query: errorImageQuery(
+							selection.baseQueryParams,
+							"Playlist mode needs a playlist",
+						),
+					});
+					dynamicRefreshRate = DEFAULT_REFRESH_RATE;
 				}
-				imageUrl = buildDeviceImageUrl({
-					baseUrl,
-					imagePath: screenToDisplay,
-					profile: selection.profile,
-					query: selection.baseQueryParams,
-				});
+				if (screenToDisplay !== "error") {
+					imageUrl = buildDeviceImageUrl({
+						baseUrl,
+						imagePath: screenToDisplay,
+						profile: selection.profile,
+						query: selection.baseQueryParams,
+					});
+				}
 				break;
 			}
 
@@ -158,17 +161,17 @@ export async function GET(request: Request) {
 					});
 				}
 				dynamicRefreshRate = calculateRefreshRate(
-					device.refresh_schedule as unknown as RefreshSchedule,
-					180,
-					timezone,
+					normalizeRefreshSchedule(device.refresh_schedule),
+					DEFAULT_REFRESH_RATE,
+					device.timezone || "UTC",
 				);
 				break;
 
 			default:
 				dynamicRefreshRate = calculateRefreshRate(
-					device.refresh_schedule as unknown as RefreshSchedule,
-					180,
-					timezone,
+					normalizeRefreshSchedule(device.refresh_schedule),
+					DEFAULT_REFRESH_RATE,
+					device.timezone || "UTC",
 				);
 				break;
 		}
@@ -191,6 +194,9 @@ export async function GET(request: Request) {
 		const firmwareExtra: Record<string, unknown> = {
 			// 0 = portrait (no rotation), 1 = landscape (90° rotation).
 			image_rotate: orientation === "landscape" ? 1 : 0,
+			// Display tuning profile. Firmware reads this only when it sent
+			// `temperature-profile: true` in the request.
+			temperature_profile: device.temperature_profile ?? "default",
 		};
 
 		const latestFirmware = await getLatestFirmware();

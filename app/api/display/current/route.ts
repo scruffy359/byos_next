@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
+import {
+	DISPLAY_FALLBACK_REFRESH_SECONDS,
+	normalizeRefreshSchedule,
+} from "@/lib/device/defaults";
 import { selectDisplayForDevice } from "@/lib/display/select";
 import { logError, logInfo } from "@/lib/logger";
 import { buildDeviceImageFilename } from "@/lib/render/device-image-url";
@@ -17,6 +21,7 @@ import { parseRequestHeaders } from "../utils";
 export async function GET(request: Request) {
 	const headers = parseRequestHeaders(request);
 	const { apiKey } = headers;
+	const apiKeyPrefix = apiKey?.slice(0, 6);
 
 	if (!apiKey) {
 		return NextResponse.json(
@@ -29,7 +34,7 @@ export async function GET(request: Request) {
 	if (!ready) {
 		logInfo("Database not available for /api/display/current", {
 			source: "api/display/current",
-			metadata: { apiKey },
+			metadata: { apiKey: apiKeyPrefix },
 		});
 		return NextResponse.json(
 			{ status: 503, error: "Database not available" },
@@ -58,10 +63,11 @@ export async function GET(request: Request) {
 			height: headers.height,
 		});
 
-		const refreshSchedule = deviceData.refresh_schedule as {
-			default_refresh_rate: number;
-		} | null;
-		const refreshRate = refreshSchedule?.default_refresh_rate || 180;
+		const refreshSchedule = normalizeRefreshSchedule(
+			deviceData.refresh_schedule,
+		);
+		const refreshRate =
+			refreshSchedule?.default_refresh_rate || DISPLAY_FALLBACK_REFRESH_SECONDS;
 
 		logInfo("Current display request successful", {
 			source: "api/display/current",
@@ -88,7 +94,7 @@ export async function GET(request: Request) {
 	} catch (error) {
 		logError(error as Error, {
 			source: "api/display/current",
-			metadata: { apiKey },
+			metadata: { apiKey: apiKeyPrefix },
 		});
 		return NextResponse.json(
 			{ status: 500, error: "Internal server error" },
