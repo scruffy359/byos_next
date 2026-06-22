@@ -151,3 +151,9 @@ export enum FormatValue {
 	png = "png",
 	react = "react",
 }
+
+export type DbStatus = {
+	ready: boolean;
+	error?: string;
+	databaseConfigured: boolean;
+};
