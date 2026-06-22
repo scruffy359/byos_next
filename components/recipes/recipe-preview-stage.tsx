@@ -198,6 +198,7 @@ export function RecipePreviewStage({
 		simWidth != null &&
 		simHeight != null
 			? (() => {
+					// TODO: use buildDeviceImageParameters??
 					const params = new URLSearchParams();
 					params.set("width", String(simWidth));
 					params.set("height", String(simHeight));

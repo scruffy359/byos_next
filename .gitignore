@@ -54,3 +54,6 @@ sync.sh
 
 # local planning notes
 .notes/
+
+# generated files
+docs/*.svg

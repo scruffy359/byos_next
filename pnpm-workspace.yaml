@@ -2,11 +2,13 @@ allowBuilds:
   "@biomejs/biome": true
   "@tailwindcss/oxide": true
   msw: true
+  puppeteer: true
   sharp: true
   unrs-resolver: true
 
 onlyBuiltDependencies:
   - "@biomejs/biome"
+  - "@mermaid-js/mermaid-cli"
   - "@tailwindcss/oxide"
   - msw
   - sharp

@@ -1,0 +1,220 @@
+erDiagram
+    user {
+        id text PK
+        name text
+        email text
+        emailVerified boolean
+        image text
+        createdAt timestamptz
+        updatedAt timestamptz
+        role text
+        banned boolean
+        banReason text
+        banExpires timestamptz
+    }
+
+    session {
+        id text PK
+        expiresAt timestamptz
+        token text
+        createdAt timestamptz
+        updatedAt timestamptz
+        ipAddress text
+        userAgent text
+        userId text FK
+        impersonatedBy text
+    }
+
+    account {
+        id text PK
+        accountId text
+        providerId text
+        userId text FK
+        accessToken text
+        refreshToken text
+        idToken text
+        accessTokenExpiresAt timestamptz
+        refreshTokenExpiresAt timestamptz
+        scope text
+        password text
+        createdAt timestamptz
+        updatedAt timestamptz
+    }
+
+    verification {
+        id text PK
+        identifier text
+        value text
+        expiresAt timestamptz
+        createdAt timestamptz
+        updatedAt timestamptz
+    }
+
+    devices {
+        id bigserial PK
+        friendly_id varchar
+        name varchar
+        mac_address varchar
+        api_key varchar
+        screen varchar
+        refresh_schedule jsonb
+        timezone text
+        last_update_time timestamptz
+        next_expected_update timestamptz
+        last_refresh_duration integer
+        battery_voltage numeric
+        firmware_version text
+        rssi integer
+        playlist_id uuid FK
+        current_playlist_index integer
+        mixup_id uuid FK
+        display_mode device_display_mode
+        screen_width integer
+        screen_height integer
+        screen_orientation varchar
+        grayscale integer
+        user_id text FK
+        model text
+        palette_id text
+        sleep_mode_enabled boolean
+        sleep_start_time integer
+        sleep_end_time integer
+        temperature_profile text
+        supports_temperature_profile boolean
+        created_at timestamptz
+        updated_at timestamptz
+    }
+
+    playlists {
+        id uuid PK
+        name text
+        user_id text FK
+        created_at timestamptz
+        updated_at timestamptz
+    }
+
+    playlist_items {
+        id uuid PK
+        playlist_id uuid FK
+        screen_id text
+        duration integer
+        start_time time
+        end_time time
+        days_of_week jsonb
+        order_index integer
+        created_at timestamptz
+    }
+
+    mixups {
+        id uuid PK
+        name text
+        layout_id mixup_layout_id
+        user_id text FK
+        created_at timestamptz
+        updated_at timestamptz
+    }
+
+    mixup_slots {
+        id uuid PK
+        mixup_id uuid FK
+        slot_id text
+        order_index integer
+        recipe_id uuid FK
+        created_at timestamptz
+    }
+
+    screen_configs {
+        id uuid PK
+        screen_id text
+        params jsonb
+        user_id text FK
+        created_at timestamptz
+        updated_at timestamptz
+    }
+
+    recipes {
+        id uuid PK
+        slug text
+        type recipe_type
+        name text
+        description text
+        repo text
+        screenshot_url text
+        logo_url text
+        author text
+        author_github text
+        author_email text
+        zip_url text
+        zip_entry_path text
+        category text
+        version text
+        metadata jsonb
+        user_id text FK
+        created_at timestamptz
+        updated_at timestamptz
+    }
+
+    recipe_files {
+        id uuid PK
+        recipe_id uuid FK
+        filename text
+        content text
+        created_at timestamptz
+    }
+
+    plugin_settings {
+        id bigserial PK
+        uuid text
+        user_id text FK
+        name text
+        plugin_id integer
+        icon_url text
+        icon_content_type text
+        read_only boolean
+        strategy text
+        merge_variables jsonb
+        fields jsonb
+        markup jsonb
+        settings_yaml text
+        created_at timestamptz
+        updated_at timestamptz
+    }
+
+    logs {
+        id bigserial PK
+        friendly_id text FK
+        log_data text
+        created_at timestamptz
+    }
+
+    system_logs {
+        id uuid PK
+        created_at timestamptz
+        level varchar
+        message text
+        source varchar
+        metadata text
+        trace text
+    }
+
+    schema_migrations {
+        name text PK
+        checksum text
+        applied_at timestamptz
+    }
+
+    user ||--o{ session : "has"
+    user ||--o{ account : "has"
+    user ||--o{ devices : "owns"
+    user ||--o{ playlists : "owns"
+    user ||--o{ mixups : "owns"
+    user ||--o{ screen_configs : "owns"
+    user ||--o{ recipes : "owns"
+    user ||--o{ plugin_settings : "has"
+    playlists ||--o{ playlist_items : "contains"
+    playlists ||--o{ devices : "assigned to"
+    mixups ||--o{ mixup_slots : "has"
+    mixups ||--o{ devices : "assigned to"
+    recipes ||--o{ recipe_files : "has"
+    recipes ||--o{ mixup_slots : "referenced by"
+    devices ||--o{ logs : "generates"

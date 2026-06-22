@@ -1,5 +1,4 @@
 import type { NextRequest } from "next/server";
-import { cache } from "react";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";

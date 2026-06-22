@@ -260,8 +260,7 @@ export default async function RecipePage({
 	const paramDefinitions = customFieldsToParamDefinitions(customFields);
 	const hasParams = Object.keys(paramDefinitions).length > 0;
 	const storedValues = hasParams
-		? // TODO: internalvalues???
-			await getScreenParams(slug, null, paramDefinitions, {})
+		? await getScreenParams(slug, null, paramDefinitions, {})
 		: {};
 	const [trmnlModels, trmnlPalettes] = await Promise.all([
 		listModels(),

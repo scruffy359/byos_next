@@ -1,0 +1,3 @@
+- 0: use the files in "./migrations" which are postgres database migration scripts to understand the application's database schema and create a mermaid schema diagram file documenting the database schema.
+- 1: this result is incorrect. the database column's name should appear before the column's type.
+- ISSUE: had to tell Claude the format, which it changes to "name type [key]". It shouldn't have been incorrect from the start to follow standard ER Diagramming best practices.
