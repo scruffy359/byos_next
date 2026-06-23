@@ -18,7 +18,6 @@ import {
 	getTrmnlModelClassName,
 	getTrmnlModelStyle,
 } from "@/lib/trmnl/model-css";
-import { findModel } from "@/lib/trmnl/registry";
 
 import { FormatValue } from "@/lib/types";
 import { localTimezone } from "@/lib/utils";
@@ -90,11 +89,13 @@ const LiquidRenderComponent = ({
 	customFieldOverrides?: Record<string, unknown>;
 	userId: string | null;
 }) => {
+	/*
 	console.log({
 		where: "LiquidRenderComponent",
 		format,
 		useClient: typeof window !== "undefined",
 	});
+	*/
 	const result = use(renderLiquidRecipe(slug, userId, customFieldOverrides));
 
 	if (!result) {
@@ -142,7 +143,7 @@ export default async function RecipePreviewPage({
 		$timezone: $timezoneParam,
 	} = await searchParams;
 	const userId = consumeBrowserRenderContext(renderToken);
-
+	/*
 	console.log({
 		where: "RecipePreviewPage",
 		userId,
@@ -150,6 +151,7 @@ export default async function RecipePreviewPage({
 		$timezoneParam,
 		useClient: typeof window !== "undefined",
 	});
+	*/
 
 	const resolved = await resolveReactRecipe(
 		slug,

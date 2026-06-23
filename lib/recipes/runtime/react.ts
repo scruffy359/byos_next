@@ -129,6 +129,7 @@ export const resolveReactRecipe = async (
 		data = safeParseDataWithDefaults(definition.dataSchema, params);
 	}
 
+	/*
 	console.trace();
 	console.log({
 		where: "resolveReactRecipe",
@@ -139,5 +140,6 @@ export const resolveReactRecipe = async (
 		params,
 		data,
 	});
+	*/
 	return { definition, params, data };
 };

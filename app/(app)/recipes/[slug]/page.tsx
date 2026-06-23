@@ -138,12 +138,14 @@ export default async function RecipePage({
 	await connection();
 	const { slug } = await params;
 	const { orientation, format = DefaultFormat } = await searchParams;
+	/*
 	console.log({
 		where: "RecipePage",
 		slug,
 		format,
 		useClient: typeof window !== "undefined",
 	});
+	*/
 	const formatValue = format as FormatValue;
 	const isPortrait = orientation === "portrait";
 	const $timezone = localTimezone();

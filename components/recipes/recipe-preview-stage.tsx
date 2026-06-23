@@ -102,13 +102,13 @@ export function RecipePreviewStage({
 	const [paletteId, setPaletteId] = useState<string>(() =>
 		chooseDefaultPaletteId(initialModel ?? null),
 	);
-
+	/*
 	console.log({
 		where: "RecipePreviewStage",
 		format,
 		useClient: typeof window !== "undefined",
 	});
-
+	*/
 	const deviceSimActive = Boolean(trmnlModels && trmnlModels.length > 0);
 
 	const selectedModel = useMemo(() => {

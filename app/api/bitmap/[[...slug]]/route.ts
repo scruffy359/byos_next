@@ -251,7 +251,7 @@ const renderRecipeBitmap = async (
 	$timezone: string,
 	cookies?: string,
 ) => {
-	console.log({ where: "renderRecipeBitmap", recipeId, $timezone });
+	//console.log({ where: "renderRecipeBitmap", recipeId, $timezone });
 	const renders = await renderRecipeToImage({
 		slug: recipeId,
 		imageWidth: width,

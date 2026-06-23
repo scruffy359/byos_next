@@ -73,7 +73,7 @@ export async function renderWithBrowser(
 	const captureWidth = options.captureWidth ?? width;
 	const captureHeight = options.captureHeight ?? height;
 
-	console.log({ where: "renderWithBrowser", url, options });
+	//console.log({ where: "renderWithBrowser", url, options });
 	const browser = await getBrowser("trusted");
 	const context = await browser.createBrowserContext();
 	const page = await context.newPage();

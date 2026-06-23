@@ -77,10 +77,12 @@ export async function renderRecipeToImage({
 	$timezone,
 }: RenderRecipeArgs): Promise<RasterizeResults> {
 	// React path
+	/*
 	console.log({
 		where: "renderRecipeToImage",
 		$timezone,
 	});
+	*/
 	const resolved = await resolveReactRecipe(slug, $timezone, userId);
 	if (resolved) {
 		const { definition, params, data } = resolved;
@@ -108,7 +110,7 @@ export async function renderRecipeToImage({
 
 	// Liquid path
 	if (await isLiquidRecipe(slug, userId)) {
-		console.log({ where: "renderRecipeToImage - isLiquidRecipe", slug });
+		//console.log({ where: "renderRecipeToImage - isLiquidRecipe", slug });
 		const html = await buildLiquidHtml(
 			slug,
 			userId ?? (await getCurrentUserId()),
@@ -164,11 +166,13 @@ export async function renderRecipeForDevice({
 					},
 				}
 			: profile;
+	/*
 	console.log({
 		where: "renderRecipeForDevice",
 		renderProfile,
 		$timezone,
 	});
+	*/
 	const renders = await renderRecipeToImage({
 		slug,
 		imageWidth: profile.model.width,
