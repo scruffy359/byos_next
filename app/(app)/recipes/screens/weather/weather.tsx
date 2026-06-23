@@ -44,6 +44,11 @@ export const paramsSchema = z.object({
 			"Optional exact longitude; when set with latitude, skips geocoding",
 		)
 		.meta({ title: "Longitude" }),
+	tempUnit: z
+		.enum(["F", "C"])
+		.default("C")
+		.describe("Units to display temperatures")
+		.meta({ title: "Temperature Unit" }),
 });
 
 export const dataSchema = z.object({
@@ -64,6 +69,7 @@ export const dataSchema = z.object({
 });
 
 interface WeatherProps {
+	tempUnit?: string;
 	temperature?: string;
 	feelsLike?: string;
 	humidity?: string;
@@ -83,6 +89,7 @@ interface WeatherProps {
 }
 
 export default function Weather({
+	tempUnit,
 	temperature = "Loading...",
 	feelsLike = "Loading...",
 	humidity = "Loading...",
@@ -98,9 +105,14 @@ export default function Weather({
 	width = DEFAULT_IMAGE_WIDTH,
 	height = DEFAULT_IMAGE_HEIGHT,
 }: WeatherProps) {
+	const tempUnitLabel = tempUnit === "C" ? "°C" : "°F";
 	// Weather statistics
 	const weatherStats = [
-		{ label: "Feels Like", value: `${feelsLike}°C`, icon: tempIcon },
+		{
+			label: "Feels Like",
+			value: `${feelsLike}${tempUnitLabel}`,
+			icon: tempIcon,
+		},
 		{ label: "Humidity", value: `${humidity}%`, icon: humidityIcon },
 		{ label: "Wind Speed", value: `${windSpeed} km/h`, icon: windIcon },
 		{ label: "Pressure", value: `${pressure} hPa`, icon: pressureIcon },
@@ -133,15 +145,18 @@ export default function Weather({
 					<h2
 						className={`font-inter ${isHalfScreen ? "text-8xl" : "text-9xl"}`}
 					>
-						{temperature}°C
+						{temperature}
+						{tempUnitLabel}
 					</h2>
 					<div className="flex flex-col items-center justify-center">
 						{getWeatherIcon(description)}
 						{!isHalfScreen && (
 							<div className="text-4xl mt-4 font-blockkie">
 								<div className="flex flex-row items-center">
-									{tempUp} {highTemp}°C
-									{tempDown} {lowTemp}°C
+									{tempUp} {highTemp}
+									{tempUnitLabel}
+									{tempDown} {lowTemp}
+									{tempUnitLabel}
 								</div>
 							</div>
 						)}
@@ -206,6 +221,7 @@ export const definition: RecipeDefinition<
 			location: params.location,
 			latitude: params.latitude,
 			longitude: params.longitude,
+			tempUnit: params.tempUnit,
 		});
 		return data as z.infer<typeof dataSchema>;
 	},

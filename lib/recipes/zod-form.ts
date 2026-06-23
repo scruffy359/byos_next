@@ -7,7 +7,12 @@ import { z } from "zod";
  * sources (e.g. liquid plugin custom_fields) without coupling the form to
  * Zod's internals.
  */
-export type RecipeParamType = "string" | "number" | "boolean";
+export enum RecipeParamType {
+	string = "string",
+	number = "number",
+	boolean = "boolean",
+	enum = "enum",
+}
 
 export type RecipeParamDefinition = {
 	label: string;
@@ -15,6 +20,7 @@ export type RecipeParamDefinition = {
 	description?: string;
 	default?: unknown;
 	placeholder?: string;
+	enumValues?: Array<z.core.util.Primitive>;
 };
 
 export type RecipeParamDefinitions = Record<string, RecipeParamDefinition>;
@@ -62,9 +68,10 @@ function detectFieldType(schema: z.ZodTypeAny): RecipeParamType | null {
 	const base = unwrapToBaseType(schema);
 	const internals = (base as unknown as { _zod?: ZodInternals })._zod;
 	const t = internals?.def.type;
-	if (t === "string") return "string";
-	if (t === "number") return "number";
-	if (t === "boolean") return "boolean";
+	if (t === RecipeParamType.string) return RecipeParamType.string;
+	if (t === RecipeParamType.number) return RecipeParamType.number;
+	if (t === RecipeParamType.boolean) return RecipeParamType.boolean;
+	if (t === RecipeParamType.enum) return RecipeParamType.enum;
 	return null;
 }
 
@@ -125,19 +132,26 @@ export function zodObjectToParamDefinitions(
 	schema: z.ZodObject,
 ): RecipeParamDefinitions {
 	const shape = schema.shape as Record<string, z.ZodTypeAny>;
+
 	const definitions: RecipeParamDefinitions = {};
 
 	for (const [key, fieldSchema] of Object.entries(shape)) {
+		fieldSchema.def;
 		const type = detectFieldType(fieldSchema);
 		if (!type) continue;
 
 		const meta = readMeta(fieldSchema);
 		const description = readDescription(fieldSchema);
 		const defaultValue = readDefault(fieldSchema);
+		const enumValues =
+			type !== RecipeParamType.enum
+				? undefined
+				: fieldSchema._zod.values?.values().toArray();
 
 		definitions[key] = {
 			label: meta.title ?? humanizeKey(key),
 			type,
+			enumValues,
 			...(description !== undefined ? { description } : {}),
 			...(defaultValue !== undefined ? { default: defaultValue } : {}),
 			...(meta.placeholder !== undefined

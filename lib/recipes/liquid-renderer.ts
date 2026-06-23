@@ -13,7 +13,7 @@ import { db } from "@/lib/database/db";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logger } from "./logger";
-import type { RecipeParamDefinitions } from "./zod-form";
+import { type RecipeParamDefinitions, RecipeParamType } from "./zod-form";
 
 const TRMNL_CSS_URL = "https://trmnl.com/css/latest/plugins.css";
 const TRMNL_JS_URL = "https://trmnl.com/js/latest/plugins.js";
@@ -583,7 +583,10 @@ export function customFieldsToParamDefinitions(
 		if (!field.keyname) continue;
 		definitions[field.keyname] = {
 			label: field.name ?? field.keyname,
-			type: field.field_type === "number" ? "number" : "string",
+			type:
+				field.field_type === RecipeParamType.number
+					? RecipeParamType.number
+					: RecipeParamType.string,
 			default: field.default,
 			description: field.description,
 		};

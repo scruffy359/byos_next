@@ -24,6 +24,7 @@ type WeatherParams = {
 	location?: string;
 	latitude?: number;
 	longitude?: number;
+	tempUnit?: "F" | "C";
 };
 
 interface GeocodingResponse {
@@ -151,11 +152,15 @@ async function getWeatherData(
 	latitude?: number,
 	longitude?: number,
 	locationName?: string,
+	tempUnit?: string,
 ): Promise<WeatherData | null> {
 	try {
 		if ((!latitude || !longitude) && !locationName) {
 			throw new Error("Latitude, longitude, or location name are required");
 		}
+
+		const temperatureUnit =
+			tempUnit === "F" ? "&temperature_unit=fahrenheit" : "";
 
 		// Skip geocoding when explicit coordinates are supplied — avoids a slow,
 		// sometimes-unreachable geocoding call and goes straight to the forecast.
@@ -167,20 +172,19 @@ async function getWeatherData(
 			}
 		}
 
+		//https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&hourly=temperature_2m&temperature_unit=fahrenheit
 		// Fetch weather data from Open-Meteo API
-		const response = await fetch(
-			`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,surface_pressure,weather_code&daily=temperature_2m_max,temperature_2m_min,sunset,sunrise&timezone=auto`,
-			{
-				headers: {
-					Accept: "application/json",
-				},
-				next: { revalidate: 0 },
+		const requestUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,surface_pressure,weather_code&daily=temperature_2m_max,temperature_2m_min,sunset,sunrise&timezone=auto${temperatureUnit}`;
+		const response = await fetch(requestUrl, {
+			headers: {
+				Accept: "application/json",
 			},
-		);
+			next: { revalidate: 0 },
+		});
 
 		if (!response.ok) {
 			throw new Error(
-				`Open-Meteo API responded with status: ${response.status}`,
+				`Open-Meteo API responded with status: ${response.status}. requestUrl=${requestUrl}`,
 			);
 		}
 
@@ -274,6 +278,7 @@ async function fetchWeatherDataNoCache(
 		params?.latitude,
 		params?.longitude,
 		params?.location,
+		params?.tempUnit,
 	);
 
 	// If data is null or empty, return a default object
@@ -309,6 +314,7 @@ const getCachedWeatherData = unstable_cache(
 			params?.latitude,
 			params?.longitude,
 			params?.location,
+			params?.tempUnit,
 		);
 
 		// If data is null or empty, throw an error to prevent caching
@@ -334,6 +340,7 @@ export default async function getData(
 	const locationName = params?.location || "San Francisco";
 	const latitude = params?.latitude;
 	const longitude = params?.longitude;
+	const tempUnit = params?.tempUnit || "C";
 
 	let finalLatitude: number | undefined = latitude;
 	let finalLongitude: number | undefined = longitude;
@@ -355,6 +362,7 @@ export default async function getData(
 			latitude: finalLatitude,
 			longitude: finalLongitude,
 			location: finalLocationName,
+			tempUnit,
 		});
 	} catch (error) {
 		console.log("Cache skipped or error:", error);
@@ -369,6 +377,7 @@ export default async function getData(
 			latitude: finalLatitude,
 			longitude: finalLongitude,
 			location: finalLocationName,
+			tempUnit,
 		});
 	}
 }

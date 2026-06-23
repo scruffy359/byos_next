@@ -7,10 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import type {
-	RecipeParamDefinition,
-	RecipeParamDefinitions,
+import {
+	type RecipeParamDefinition,
+	type RecipeParamDefinitions,
+	RecipeParamType,
 } from "@/lib/recipes/zod-form";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "../ui/select";
 
 type UpdateResult =
 	| { success: true }
@@ -52,25 +60,26 @@ const buildInitialState = (
 
 const renderField = (
 	key: string,
+	elementId: string,
 	definition: RecipeParamDefinition,
 	value: unknown,
 	onChange: (key: string, value: unknown) => void,
 ) => {
 	switch (definition.type) {
-		case "boolean":
+		case RecipeParamType.boolean:
 			return (
 				<Switch
-					id={key}
+					id={elementId}
 					name={key}
 					checked={value === true}
 					onCheckedChange={(checked) => onChange(key, checked)}
 				/>
 			);
-		case "number":
+		case RecipeParamType.number:
 			return (
 				<Input
 					type="number"
-					id={key}
+					id={elementId}
 					name={key}
 					value={
 						typeof value === "string" || typeof value === "number" ? value : ""
@@ -86,6 +95,34 @@ const renderField = (
 						onChange(key, Number.isNaN(parsed) ? "" : parsed);
 					}}
 				/>
+			);
+		case RecipeParamType.enum:
+			return (
+				<Select
+					name={key}
+					value={value as string}
+					onValueChange={(value) => {
+						if (value === "") {
+							onChange(key, "");
+							return;
+						}
+						onChange(key, value);
+					}}
+				>
+					<SelectTrigger id={elementId}>
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						{definition.enumValues?.map((item) => {
+							const itemValue = item?.toString() ?? "";
+							return (
+								<SelectItem value={itemValue} key={itemValue}>
+									{itemValue}
+								</SelectItem>
+							);
+						})}
+					</SelectContent>
+				</Select>
 			);
 		default:
 			return (
@@ -228,10 +265,11 @@ export function ScreenParamsForm({
 			<div className="grid gap-4 p-4 sm:grid-cols-2">
 				{userEntries.map(([key, definition]) => {
 					const fieldError = fieldErrors[key];
+					const elementId = definition.type !== "enum" ? key : `${key}-select`;
 					return (
 						<div key={key} className="flex flex-col gap-1.5">
 							<div className="flex items-baseline justify-between gap-2">
-								<Label htmlFor={key} className="text-xs font-semibold">
+								<Label htmlFor={elementId} className="text-xs font-semibold">
 									{definition.label}
 								</Label>
 								{definition.description && (
@@ -240,8 +278,13 @@ export function ScreenParamsForm({
 									</span>
 								)}
 							</div>
-							{renderField(key, definition, values[key], (field, val) =>
-								setValues((prev) => ({ ...prev, [field]: val })),
+							{renderField(
+								key,
+								elementId,
+								definition,
+								values[key],
+								(field, val) =>
+									setValues((prev) => ({ ...prev, [field]: val })),
 							)}
 							{fieldError && (
 								<span className="text-[11px] text-destructive">
