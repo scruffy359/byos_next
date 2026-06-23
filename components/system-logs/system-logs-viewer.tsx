@@ -175,17 +175,6 @@ export default function SystemLogsViewer({
 
 	// Fetch logs data
 	useEffect(() => {
-		// Skip initial fetch if we have initialData and no filters are applied
-		if (
-			initialData &&
-			page === 1 &&
-			!searchQuery &&
-			levelFilter === "all" &&
-			sourceFilter === "all"
-		) {
-			return;
-		}
-
 		const loadLogs = async () => {
 			setIsLoading(true);
 			try {
@@ -207,7 +196,7 @@ export default function SystemLogsViewer({
 				setSources(uniqueSources);
 
 				// Set active tab based on level filter
-				setActiveTab(levelFilter !== "all" ? levelFilter : "all");
+				setActiveTab(levelFilter);
 			} catch (error) {
 				console.error("Failed to fetch logs:", error);
 			} finally {
@@ -222,7 +211,6 @@ export default function SystemLogsViewer({
 		levelFilter,
 		sourceFilter,
 		customFetchFunction,
-		initialData,
 		perPage,
 	]);
 

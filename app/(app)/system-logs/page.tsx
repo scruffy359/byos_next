@@ -16,6 +16,8 @@ const INITIAL_PAGE_SIZE = 15;
 
 // SystemLogs data component that fetches its own data
 const SystemLogsData = async () => {
+	await connection();
+
 	const dbStatus = await getDbStatus();
 
 	if (!dbStatus.ready) {
@@ -47,8 +49,6 @@ const SystemLogsData = async () => {
 };
 
 export default async function SystemLogsPage() {
-	await connection();
-
 	return (
 		<PageTemplate
 			title="System Logs"
