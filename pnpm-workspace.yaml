@@ -8,7 +8,6 @@ allowBuilds:
 
 onlyBuiltDependencies:
   - "@biomejs/biome"
-  - "@mermaid-js/mermaid-cli"
   - "@tailwindcss/oxide"
   - msw
   - sharp
