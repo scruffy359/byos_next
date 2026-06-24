@@ -92,13 +92,22 @@ export function RecipePreviewStage({
 	const router = useRouter();
 	const reactFrameRef = useRef<HTMLDivElement>(null);
 	const [reactFrameSize, setReactFrameSize] = useState({ width: 0, height: 0 });
+	const sortedModels = useMemo(
+		() =>
+			[...(trmnlModels ?? [])].sort(
+				(a, b) =>
+					a.label.localeCompare(b.label, undefined, { sensitivity: "base" }) ||
+					a.name.localeCompare(b.name),
+			),
+		[trmnlModels],
+	);
 	const [modelName, setModelName] = useState<string>(() => {
-		if (!trmnlModels?.length) return DEFAULT_MODEL_NAME;
-		const preferred = trmnlModels.find((m) => m.name === DEFAULT_MODEL_NAME);
-		return preferred?.name ?? trmnlModels[0].name;
+		if (!sortedModels.length) return DEFAULT_MODEL_NAME;
+		const preferred = sortedModels.find((m) => m.name === DEFAULT_MODEL_NAME);
+		return preferred?.name ?? sortedModels[0].name;
 	});
 	const initialModel =
-		trmnlModels?.find((m) => m.name === DEFAULT_MODEL_NAME) ?? trmnlModels?.[0];
+		sortedModels.find((m) => m.name === DEFAULT_MODEL_NAME) ?? sortedModels[0];
 	const [paletteId, setPaletteId] = useState<string>(() =>
 		chooseDefaultPaletteId(initialModel ?? null),
 	);
@@ -109,16 +118,16 @@ export function RecipePreviewStage({
 		useClient: typeof window !== "undefined",
 	});
 	*/
-	const deviceSimActive = Boolean(trmnlModels && trmnlModels.length > 0);
+	const deviceSimActive = sortedModels.length > 0;
 
 	const selectedModel = useMemo(() => {
-		if (!trmnlModels?.length) return null;
+		if (!sortedModels.length) return null;
 		return (
-			trmnlModels.find((m) => m.name === modelName) ??
-			trmnlModels.find((m) => m.name === DEFAULT_MODEL_NAME) ??
-			trmnlModels[0]
+			sortedModels.find((m) => m.name === modelName) ??
+			sortedModels.find((m) => m.name === DEFAULT_MODEL_NAME) ??
+			sortedModels[0]
 		);
-	}, [trmnlModels, modelName]);
+	}, [sortedModels, modelName]);
 
 	const modelPalettes = useMemo(() => {
 		if (!selectedModel || !trmnlPalettes?.length) return [];
@@ -333,7 +342,7 @@ export function RecipePreviewStage({
 					))}
 				</ToggleGroup>
 
-				{deviceSimActive && trmnlModels && selectedModel && (
+				{deviceSimActive && selectedModel && (
 					<div className="flex flex-wrap items-center gap-2">
 						<div className="flex items-center">
 							<Label htmlFor="recipe-preview-model" className="sr-only">
@@ -343,7 +352,7 @@ export function RecipePreviewStage({
 								value={selectedModel.name}
 								onValueChange={(value) => {
 									setModelName(value);
-									const nextModel = trmnlModels.find((m) => m.name === value);
+									const nextModel = sortedModels.find((m) => m.name === value);
 									setPaletteId(chooseDefaultPaletteId(nextModel ?? null));
 								}}
 							>
@@ -358,7 +367,7 @@ export function RecipePreviewStage({
 									<SelectValue placeholder="Model" />
 								</SelectTrigger>
 								<SelectContent>
-									{trmnlModels.map((m) => (
+									{sortedModels.map((m) => (
 										<SelectItem key={m.name} value={m.name}>
 											{m.label}{" "}
 											<span className="text-muted-foreground tabular-nums">

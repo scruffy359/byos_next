@@ -4,6 +4,10 @@ import { cache, use } from "react";
 import { getScreenParams } from "@/app/actions/screens-params";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
 import LiquidPreview from "@/lib/recipes/liquid-preview";
 import {
 	customFieldsToParamDefinitions,
@@ -18,7 +22,7 @@ import {
 	getTrmnlModelClassName,
 	getTrmnlModelStyle,
 } from "@/lib/trmnl/model-css";
-
+import { createScreenProfile } from "@/lib/trmnl/screen-profile";
 import { FormatValue } from "@/lib/types";
 import { localTimezone } from "@/lib/utils";
 
@@ -153,56 +157,76 @@ export default async function RecipePreviewPage({
 	});
 	*/
 
+	const width = widthParam ? Number.parseInt(widthParam, 10) : undefined;
+	const height = heightParam ? Number.parseInt(heightParam, 10) : undefined;
+	const profile =
+		modelParam || paletteParam
+			? await getDeviceProfile(modelParam, paletteParam)
+			: null;
+	const screen = createScreenProfile({
+		width: width ?? profile?.model.width ?? DEFAULT_IMAGE_WIDTH,
+		height: height ?? profile?.model.height ?? DEFAULT_IMAGE_HEIGHT,
+		model: profile?.model,
+		palette: profile?.palette,
+	});
+
 	const resolved = await resolveReactRecipe(
 		slug,
 		$timezoneParam ?? localTimezone(),
-		null,
+		userId,
 	);
-	const width = widthParam ? Number.parseInt(widthParam, 10) : 800;
-	const height = heightParam ? Number.parseInt(heightParam, 10) : 480;
+	const className = getTrmnlModelClassName(profile?.model);
+	const style = getTrmnlModelStyle(profile?.model);
+
 	if (resolved) {
 		const { definition, params: parsedParams, data } = resolved;
 		const Component = definition.Component;
 		const renderScale = getRenderScale(definition.meta.renderSettings ?? null);
 
-		const profile =
-			modelParam || paletteParam
-				? await getDeviceProfile(modelParam, paletteParam)
-				: null;
-		const className = getTrmnlModelClassName(profile?.model);
-		const style = getTrmnlModelStyle(profile?.model);
-
 		const recipe = (
 			<Component
-				width={width}
-				height={height}
+				width={screen.logicalWidth}
+				height={screen.logicalHeight}
+				screen={screen}
 				params={parsedParams}
 				data={data}
 			/>
 		);
-		const rendered =
-			renderScale === 1 ? (
-				recipe
-			) : (
+		const targetWidth = screen.physicalWidth * renderScale;
+		const targetHeight = screen.physicalHeight * renderScale;
+		const scaleX = targetWidth / screen.logicalWidth;
+		const scaleY = targetHeight / screen.logicalHeight;
+		const rendered = (
+			<div
+				style={{
+					display: "flex",
+					width: targetWidth,
+					height: targetHeight,
+					overflow: "hidden",
+				}}
+			>
 				<div
+					className={className || undefined}
 					style={{
 						display: "flex",
-						width,
-						height,
-						transform: `scale(${renderScale})`,
+						...style,
+						width: screen.logicalWidth,
+						height: screen.logicalHeight,
+						transform: `scale(${scaleX}, ${scaleY})`,
 						transformOrigin: "top left",
 					}}
 				>
 					{recipe}
 				</div>
-			);
+			</div>
+		);
 		if (!className && !style) return rendered;
 		return (
 			<div
 				className={className || undefined}
 				style={{
-					width: width ? width * renderScale : undefined,
-					height: height ? height * renderScale : undefined,
+					width: targetWidth,
+					height: targetHeight,
 					display: "flex",
 					...style,
 				}}
@@ -211,7 +235,6 @@ export default async function RecipePreviewPage({
 			</div>
 		);
 	}
-
 	// Liquid recipe path
 	const liquidMeta = await fetchLiquidRecipeMeta(slug);
 	if (!liquidMeta) notFound();
@@ -225,12 +248,13 @@ export default async function RecipePreviewPage({
 			await getScreenParams(slug, null, paramDefinitions, {})
 		: {};
 
+	// TODO: similar rendering to React path
 	return (
 		<LiquidRenderComponent
 			slug={slug}
 			format={FormatValue.react}
-			imageWidth={width}
-			imageHeight={height}
+			imageWidth={screen.physicalWidth}
+			imageHeight={screen.physicalHeight}
 			customFieldOverrides={storedValues}
 			userId={userId}
 		/>

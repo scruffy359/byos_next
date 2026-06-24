@@ -4,7 +4,8 @@ import {
 	renderDeviceImage,
 } from "@/lib/render/device-image";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
-import type { TrmnlModel } from "@/lib/trmnl/types";
+import { createScreenProfile } from "@/lib/trmnl/screen-profile";
+import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
 import { getCurrentUserId } from "../auth/get-user";
 import { FormatValue } from "../types";
 import {
@@ -57,6 +58,7 @@ type RenderRecipeArgs = {
 	userId: string | null;
 	cookies?: string;
 	model?: TrmnlModel | null;
+	palette?: TrmnlPalette | null;
 	paletteId?: string | null;
 	$timezone: string;
 };
@@ -73,6 +75,7 @@ export async function renderRecipeToImage({
 	userId,
 	cookies,
 	model,
+	palette,
 	paletteId,
 	$timezone,
 }: RenderRecipeArgs): Promise<RasterizeResults> {
@@ -86,9 +89,16 @@ export async function renderRecipeToImage({
 	const resolved = await resolveReactRecipe(slug, $timezone, userId);
 	if (resolved) {
 		const { definition, params, data } = resolved;
-		const element = createElement(definition.Component, {
+		const screen = createScreenProfile({
 			width: imageWidth,
 			height: imageHeight,
+			model,
+			palette,
+		});
+		const element = createElement(definition.Component, {
+			width: screen.logicalWidth,
+			height: screen.logicalHeight,
+			screen,
 			params,
 			data,
 		});
@@ -97,6 +107,8 @@ export async function renderRecipeToImage({
 			element,
 			imageWidth,
 			imageHeight,
+			layoutWidth: screen.logicalWidth,
+			layoutHeight: screen.logicalHeight,
 			formats,
 			grayscale,
 			cookies,
@@ -181,7 +193,8 @@ export async function renderRecipeForDevice({
 		userId,
 		cookies,
 		$timezone,
-		model: renderProfile.model,
+		model: profile.model,
+		palette: profile.palette,
 		paletteId: renderProfile.palette?.id ?? null,
 	});
 

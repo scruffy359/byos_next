@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { cache } from "react";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
@@ -125,6 +126,7 @@ export async function GET(
 			validWidth,
 			validHeight,
 			imageRequest.grayscaleLevels,
+			profile,
 			userId,
 			imageRequest.$timezone ?? localTimezone(),
 			cookieHeader || undefined,
@@ -242,25 +244,31 @@ function getImageResponseHeaders(image: {
 	};
 }
 
-const renderRecipeBitmap = async (
-	recipeId: string,
-	width: number,
-	height: number,
-	grayscaleLevels: number = 2,
-	userId: string | null = null,
-	$timezone: string,
-	cookies?: string,
-) => {
-	//console.log({ where: "renderRecipeBitmap", recipeId, $timezone });
-	const renders = await renderRecipeToImage({
-		slug: recipeId,
-		imageWidth: width,
-		imageHeight: height,
-		formats: [FormatValue.bmp],
-		grayscale: grayscaleLevels,
-		userId,
-		cookies,
-		$timezone,
-	});
-	return renders.bitmap ?? Buffer.from([]);
-};
+const renderRecipeBitmap = cache(
+	async (
+		recipeId: string,
+		width: number,
+		height: number,
+		grayscaleLevels: number = 2,
+		profile: DeviceProfile | null = null,
+		userId: string | null = null,
+		$timezone: string,
+		cookies?: string,
+	) => {
+		//console.log({ where: "renderRecipeBitmap", recipeId, $timezone });
+		const renders = await renderRecipeToImage({
+			slug: recipeId,
+			imageWidth: width,
+			imageHeight: height,
+			formats: [FormatValue.bmp],
+			grayscale: grayscaleLevels,
+			model: profile?.model ?? null,
+			palette: profile?.palette ?? null,
+			paletteId: profile?.palette?.id ?? null,
+			userId,
+			$timezone,
+			cookies,
+		});
+		return renders.bitmap ?? Buffer.from([]);
+	},
+);
