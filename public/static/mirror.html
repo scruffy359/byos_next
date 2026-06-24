@@ -71,8 +71,7 @@
           if (currentSrc === src) {
           // add req_dtm query parameter to prevent browser from
           // assuming same image as the URL may not change.
-            var dtm = Date.now();
-            extraQuery = "&req_dtm=" + dtm;
+            extraQuery = "&req_dtm=" + Date.now();
           }
           trmnl.ui.img.src = src + extraQuery;
           trmnl.ui.img.style.display = "block";
@@ -444,7 +443,7 @@
     </div>
 
     <div id="screen-container">
-      <img id="screen" alt="display" onclick="trmnl.showSetupForm()" />
+      <img id="screen" alt="display" onclick="trmnl.showSetupForm()" onkeyup="" />
 
       <div id="error-container" style="display: none">
         <div id="error-message">Loading...</div>
