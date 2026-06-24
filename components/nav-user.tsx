@@ -59,8 +59,8 @@ export function NavUser({ user }: NavUserProps) {
 
 	const handleSignOut = async () => {
 		await authClient.signOut();
-		router.push("/sign-in");
-		router.refresh();
+		// explicitly use brower navigation to force sign-in page reload.
+		window.location.href = "/sign-in";
 	};
 
 	return (
