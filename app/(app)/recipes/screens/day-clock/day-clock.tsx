@@ -106,7 +106,6 @@ export default function DayClock({
 	parts.timePart = "12:59 PM";
 	*/
 	const fontSizes = fontSizesForWidth(width);
-	console.log({ width, height, fontSizes });
 	return (
 		<PreSatori width={width} height={height}>
 			<div className="relative w-full h-full p-4 bg-black flex flex-col text-white">
