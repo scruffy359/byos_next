@@ -2,50 +2,50 @@
 <html lang="en">
   <head>
     <title>TRMNL WebKit Device</title>
-    <link rel="manifest" href="https://usetrmnl.com/mirror/manifest.json" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <link
       rel="apple-touch-icon"
       type="image/png"
-      href="https://usetrmnl.com/mirror/favicons/apple-touch-icon-76x76.png"
+      href="/favicons/apple-touch-icon-76x76.png"
       sizes="76x76"
     />
     <link
       rel="apple-touch-icon"
       type="image/png"
-      href="https://usetrmnl.com/mirror/favicons/apple-touch-icon-120x120.png"
+      href="/favicons/apple-touch-icon-120x120.png"
       sizes="120x120"
     />
     <link
       rel="apple-touch-icon"
       type="image/png"
-      href="https://usetrmnl.com/mirror/favicons/apple-touch-icon-152x152.png"
+      href="/favicons/apple-touch-icon-152x152.png"
       sizes="152x152"
     />
     <link
       rel="apple-touch-icon"
       type="image/png"
-      href="https://usetrmnl.com/mirror/favicons/apple-touch-icon-167x167.png"
+      href="/favicons/apple-touch-icon-167x167.png"
       sizes="167x167"
     />
     <link
       rel="apple-touch-icon"
       type="image/png"
-      href="https://usetrmnl.com/mirror/favicons/apple-touch-icon-180x180.png"
+      href="/favicons/apple-touch-icon-180x180.png"
       sizes="180x180"
     />
 
     <link
       rel="icon"
       type="image/png"
-      href="https://usetrmnl.com/mirror/favicons/favicon-16x16.png"
+      href="/favicons/favicon-16x16.png"
       sizes="16x16"
     />
     <link
       rel="icon"
       type="image/png"
-      href="https://usetrmnl.com/mirror/favicons/favicon-32x32.png"
+      href="/favicons/favicon-32x32.png"
       sizes="32x32"
     />
     <meta
@@ -69,9 +69,9 @@
           var currentSrc = trmnl.ui.img.src;
           var extraQuery = "";
           if (currentSrc === src) {
-          // add req_dtm query parameter to prevent browser from
+          // add $req_dtm query parameter to prevent browser from
           // assuming same image as the URL may not change.
-            extraQuery = "&req_dtm=" + Date.now();
+            extraQuery = "&$req_dtm=" + Date.now();
           }
           trmnl.ui.img.src = src + extraQuery;
           trmnl.ui.img.style.display = "block";
@@ -81,7 +81,6 @@
         showSetupForm() {
           const data = trmnl.getSettings();
           trmnl.ui.macAddressInput.value = data.macAddress || "";
-          //trmnl.ui.apiKeyInput.value = data.api_key || "";
           trmnl.ui.baseURLInput.value = data.base_url || location.origin;
 
           trmnl.ui.baseURLDetails.open = !!data.base_url;
@@ -93,7 +92,6 @@
           event.preventDefault();
 
           const macAddress = trmnl.ui.macAddressInput.value;
-          //const apiKey = trmnl.ui.apiKeyInput.value;
           const baseURL = trmnl.ui.baseURLInput.value;
 
           if (!macAddress) {
@@ -248,7 +246,6 @@
 
           // settings
           trmnl.ui.macAddressInput = document.getElementById("macAddress");
-          //trmnl.ui.apiKeyInput = document.getElementById("api_key");
           trmnl.ui.baseURLInput = document.getElementById("base_url");
           trmnl.ui.setup = document.getElementById("setup");
           trmnl.ui.baseURLDetails = document.getElementById(

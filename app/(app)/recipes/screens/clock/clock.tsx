@@ -46,18 +46,24 @@ type PartFontSizes = {
 // scales up cleanly at 1872×1404 (TRMNL X / e-readers) without scaling
 // rasterized bitmap output.
 const FONT_SCALE: Record<string, PartFontSizes> = {
-	sm: { day: "text-8xl", time: "text-10xl", date: "text-8xl" },
-	md: { day: "text-8xl", time: "text-[10rem]", date: "text-8xl" },
-	lg: { day: "text-[10rem]", time: "text-[16rem]", date: "text-[10rem]" },
-	xl: { day: "text-[10rem]", time: "text-[16rem]", date: "text-[10rem]" },
-	"2xl": { day: "text-[10rem]", time: "text-[16rem]", date: "text-[10rem]" },
+	sm: { day: "text-[5vw]", time: "text-[8vw]", date: "text-[4vw]" },
+	//sm: { day: "text-6xl", time: "text-8xl", date: "text-6xl" },
+	md: { day: "text-[5vw]", time: "text-[8vw]", date: "text-[4vw]" },
+	//md: { day: "text-8xl", time: "text-[10rem]", date: "text-7xl" },
+	lg: { day: "text-[5vw]", time: "text-[8vw]", date: "text-[4vw]" },
+	//lg: { day: "text-[10rem]", time: "text-[16rem]", date: "text-[10rem]" },
+	xl: { day: "text-[5vw]", time: "text-[8vw]", date: "text-[4vw]" },
+	//xl: { day: "text-[10rem]", time: "text-[16rem]", date: "text-[8rem]" },
+	"2xl": { day: "text-[5vw]", time: "text-[8vw]", date: "text-[4vw]" },
+	//"2xl": { day: "text-[13rem]", time: "text-[19rem]", date: "text-[13rem]" },
 };
 
 function fontSizesForWidth(width: number): PartFontSizes {
 	if (width >= 1536) return FONT_SCALE["2xl"];
 	if (width >= 1280) return FONT_SCALE.xl;
 	if (width >= 1024) return FONT_SCALE.lg;
-	return FONT_SCALE.md;
+	if (width >= 600) return FONT_SCALE.md;
+	return FONT_SCALE.sm;
 }
 
 export default function Clock({
@@ -72,8 +78,15 @@ export default function Clock({
 	currentDtm: Date;
 }) {
 	const parts = getTimeParts(currentDtm, $timezone);
+	/* Longest test cases */
+	/*
+	parts.datePart = "December 25, 2026";
+	parts.dayName = "Wednesday";
+	parts.timePart = "12:59 PM";
+	*/
 	const isHalfScreen = width === 400 && height === 480;
 	const fontSizes = fontSizesForWidth(width);
+	console.log({ width, height, isHalfScreen, fontSizes });
 	return (
 		<PreSatori width={width} height={height}>
 			<div className="relative w-full h-full p-4 bg-black flex flex-col text-white">

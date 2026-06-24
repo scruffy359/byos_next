@@ -20,6 +20,7 @@ const PUBLIC_API_PATHS = [
 const PUBLIC_PATHS = [
 	"/_next",
 	"/favicon.ico",
+	"/favicons",
 	"/manifest.webmanifest",
 	"/opengraph-image",
 	"/twitter-image",
