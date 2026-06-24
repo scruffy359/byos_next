@@ -1,5 +1,10 @@
 import { z } from "zod";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
 import type { RecipeDefinition } from "@/lib/recipes/types";
+import { createScreenProfile, ScreenProfile } from "@/lib/trmnl/screen-profile";
 import { localTimezone } from "@/lib/utils";
 import { PreSatori } from "@/utils/pre-satori";
 
@@ -66,17 +71,33 @@ function fontSizesForWidth(width: number): PartFontSizes {
 	return FONT_SCALE.sm;
 }
 
-export default function Clock({
-	width = 800,
-	height = 480,
-	$timezone,
-	currentDtm,
-}: {
-	width?: number;
-	height?: number;
+type DayClockData = {
 	$timezone: string;
 	currentDtm: Date;
-}) {
+};
+
+type DayClockProps = DayClockData & {
+	width?: number;
+	height?: number;
+	screen?: ScreenProfile;
+};
+
+export default function DayClock({
+	width: renderWidth = DEFAULT_IMAGE_WIDTH,
+	height: renderHeight = DEFAULT_IMAGE_HEIGHT,
+	screen,
+	$timezone,
+	currentDtm,
+}: DayClockProps) {
+	const screenProfile =
+		screen ?? createScreenProfile({ width: renderWidth, height: renderHeight });
+	// The grid is coordinate-positioned (event top = time→y, left = day*colWidth),
+	// so it is inherently measurement-based rather than Tailwind/flow layout.
+	// Recipe dimensions are logical screen units, so TRMNL X scales from 1040px
+	// logical width instead of its 1872px physical output.
+	const width = screenProfile.logicalWidth;
+	const height = screenProfile.logicalHeight;
+
 	const parts = getTimeParts(currentDtm, $timezone);
 	/* Longest test cases */
 	/*
@@ -84,14 +105,13 @@ export default function Clock({
 	parts.dayName = "Wednesday";
 	parts.timePart = "12:59 PM";
 	*/
-	const isHalfScreen = width === 400 && height === 480;
 	const fontSizes = fontSizesForWidth(width);
-	console.log({ width, height, isHalfScreen, fontSizes });
+	console.log({ width, height, fontSizes });
 	return (
 		<PreSatori width={width} height={height}>
 			<div className="relative w-full h-full p-4 bg-black flex flex-col text-white">
 				<div
-					className={`w-full h-full flex p-4 items-center justify-between ${isHalfScreen ? "flex-col" : "flex-col sm:flex-col"}`}
+					className={`w-full h-full flex p-4 items-center justify-between flex-col sm:flex-col`}
 				>
 					<div className={`font-inter ${fontSizes.day} uppercase`}>
 						{parts.dayName}
@@ -109,8 +129,8 @@ export const definition: RecipeDefinition<
 	typeof dataSchema
 > = {
 	meta: {
-		slug: "clock",
-		title: "Clock",
+		slug: "day-clock",
+		title: "Day Clock",
 		description: "A large format clock",
 		published: true,
 		tags: ["bitmap", "clock"],
@@ -130,6 +150,6 @@ export const definition: RecipeDefinition<
 		>;
 	},
 	Component: ({ width, height, data }) => (
-		<Clock {...data} width={width} height={height} />
+		<DayClock {...data} width={width} height={height} />
 	),
 };
