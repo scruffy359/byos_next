@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -41,7 +40,6 @@ interface NavUserProps {
 
 export function NavUser({ user }: NavUserProps) {
 	const { isMobile } = useSidebar();
-	const router = useRouter();
 
 	const getUserInitials = () => {
 		if (user.name) {
