@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <title>TRMNL WebKit Device</title>
@@ -59,26 +59,45 @@
         ui: {},
 
         showStatus(message) {
+          this.stopRefresh();
+          this.setScreen("");
+          this.hideSetupForm();
           trmnl.ui.img.style.display = "none";
           trmnl.ui.errorContainer.style.display = "flex";
           trmnl.ui.errorMessage.textContent = message;
         },
 
-        showScreen(src) {
+        setScreen(srcUrl) {
           // Determine if current src is same
           var currentSrc = trmnl.ui.img.src;
           var extraQuery = "";
-          if (currentSrc === src) {
-          // add $req_dtm query parameter to prevent browser from
-          // assuming same image as the URL may not change.
+          if (currentSrc === srcUrl && srcUrl !== "") {
+            // add $req_dtm query parameter to prevent browser from
+            // assuming same image as the URL may not change.
             extraQuery = "&$req_dtm=" + Date.now();
           }
-          trmnl.ui.img.src = src + extraQuery;
+          trmnl.ui.img.src = srcUrl + extraQuery;
+        },
+
+        showScreen(src) {
+          // Determine if current src is same
+          this.setScreen(src);
           trmnl.ui.img.style.display = "block";
           trmnl.ui.errorContainer.style.display = "none";
         },
 
+        stopRefresh() {
+          if (!trmnl.refreshTimer) {
+            return;
+          }
+          console.log("Stopped refresh");
+          clearTimeout(trmnl.refreshTimer);
+          trmnl.refreshTimer = null;
+        },
+
         showSetupForm() {
+          this.stopRefresh();
+          this.setScreen("");
           const data = trmnl.getSettings();
           trmnl.ui.macAddressInput.value = data.macAddress || "";
           trmnl.ui.baseURLInput.value = data.base_url || location.origin;
@@ -88,7 +107,7 @@
           trmnl.ui.setup.style.display = "flex";
         },
 
-        saveSetup(event) {
+        async saveSetup(event) {
           event.preventDefault();
 
           const macAddress = trmnl.ui.macAddressInput.value;
@@ -102,8 +121,6 @@
             macAddress: macAddress,
             base_url: baseURL,
           });
-
-          trmnl.fetchDisplay();
         },
 
         hideSetupForm() {
@@ -111,12 +128,18 @@
         },
 
         async setupDevice(opts = {}) {
-          clearTimeout(trmnl.refreshTimer);
+          this.stopRefresh();
+
+          this.resetSettings(opts);
 
           const macAddress = opts.macAddress;
           const baseURL = opts.base_url || "https://usetrmnl.com";
 
-          const headers = { "ID": macAddress, "Model": "webkit", "FW-Version": "1.8.6" };
+          const headers = {
+            ID: macAddress,
+            Model: "webkit",
+            "FW-Version": "1.8.6",
+          };
 
           try {
             const response = await fetch(`${baseURL}/api/setup`, {
@@ -124,9 +147,11 @@
               headers,
             });
 
+            trmnl.ui.retryButton.style.display = "none";
+
             if (!response.ok) {
               trmnl.showStatus(
-                `Failed to fetch screen: ${response.status} ${response.statusText}`
+                `Failed to setup device: ${response.status} ${response.statusText}`,
               );
               return;
             }
@@ -136,45 +161,51 @@
 
             if (data.status !== 200) {
               trmnl.showStatus(
-                `Error: ${data.error || data.message || data.status}`
+                `Error: ${data.error || data.message || data.status}`,
               );
               return;
             }
 
             data.macAddress = opts.macAddress;
             data.base_url = opts.base_url;
+            data.friendly_id = undefined;
+            data.api_key = undefined;
             trmnl.saveSettings(data);
+
+            trmnl.ui.retryButton.style.display = "block";
+
+            this.fetchDisplay();
           } catch (error) {
             trmnl.showStatus("Network error: " + error.message);
           }
         },
 
         async processResponse(data) {
-            trmnl.showScreen(data.image_url);
+          trmnl.showScreen(data.image_url);
 
-            if (data.refresh_rate) {
-              let refreshRate = 30;
+          if (data.refresh_rate) {
+            let refreshRate = 30;
 
-              if (data.rendered_at) {
-                const renderedAt = new Date(data.rendered_at);
-                const now = new Date();
-                const elapsedSeconds = Math.floor((now - renderedAt) / 1000);
+            if (data.rendered_at) {
+              const renderedAt = new Date(data.rendered_at);
+              const now = new Date();
+              const elapsedSeconds = Math.floor((now - renderedAt) / 1000);
 
-                if (elapsedSeconds < data.refresh_rate) {
-                  refreshRate = data.refresh_rate - elapsedSeconds + 5; // add 5 seconds to ensure the device triggers api/display first
-                }
+              if (elapsedSeconds < data.refresh_rate) {
+                refreshRate = data.refresh_rate - elapsedSeconds + 5; // add 5 seconds to ensure the device triggers api/display first
               }
-
-              console.log(`Refreshing in ${refreshRate} seconds...`);
-              trmnl.refreshTimer = setTimeout(
-                () => trmnl.fetchDisplay({ quiet: true }),
-                1000 * refreshRate
-              );
             }
+
+            console.log(`Refreshing in ${refreshRate} seconds...`);
+            trmnl.refreshTimer = setTimeout(
+              () => trmnl.fetchDisplay({ quiet: true }),
+              1000 * refreshRate,
+            );
+          }
         },
 
         async fetchDisplay(opts = {}) {
-          clearTimeout(trmnl.refreshTimer);
+          this.stopRefresh();
 
           if (!opts.quiet) {
             trmnl.hideSetupForm();
@@ -195,7 +226,7 @@
 
             if (!response.ok) {
               trmnl.showStatus(
-                `Failed to fetch screen: ${response.status} ${response.statusText}`
+                `Failed to fetch screen: ${response.status} ${response.statusText}`,
               );
               return;
             }
@@ -205,29 +236,39 @@
 
             if (data.status !== 0 && data.status !== 200) {
               trmnl.showStatus(
-                `Error: ${data.error || data.message || data.status}`
+                `Error: ${data.error || data.message || data.status}`,
               );
               return;
             }
 
             // wait 1 second to allow server-side caching to render
-            setTimeout(
-                () => trmnl.processResponse(data),
-                trmnl.waitShowScreenMsecs
-              );
+            setTimeout(() => {
+              console.log("delay timeout");
+              trmnl.processResponse(data);
+            }, trmnl.waitShowScreenMsecs);
           } catch (error) {
             trmnl.showStatus("Network error: " + error.message);
           }
         },
 
         getSettings() {
-          return JSON.parse(localStorage.getItem("settings")) || {};
+          return (
+            JSON.parse(localStorage.getItem("trmnl.device.settings")) || {}
+          );
+        },
+
+        resetSettings(data) {
+          localStorage.setItem("trmnl.device.settings", JSON.stringify(data));
+          console.log("Settings reset:", data);
         },
 
         saveSettings(data) {
           const settings = trmnl.getSettings();
           Object.assign(settings, data);
-          localStorage.setItem("settings", JSON.stringify(settings));
+          localStorage.setItem(
+            "trmnl.device.settings",
+            JSON.stringify(settings),
+          );
           console.log("Settings saved:", settings);
         },
 
@@ -236,20 +277,21 @@
             isWebKit: /AppleWebKit/.test(navigator.userAgent),
             userAgent: navigator.userAgent,
             height: window.screen.height,
-            width: window.screen.width
+            width: window.screen.width,
           };
           console.log(device);
           // screen
           trmnl.ui.img = document.getElementById("screen");
           trmnl.ui.errorContainer = document.getElementById("error-container");
           trmnl.ui.errorMessage = document.getElementById("error-message");
+          trmnl.ui.retryButton = document.getElementById("retry-button");
 
           // settings
           trmnl.ui.macAddressInput = document.getElementById("macAddress");
           trmnl.ui.baseURLInput = document.getElementById("base_url");
           trmnl.ui.setup = document.getElementById("setup");
           trmnl.ui.baseURLDetails = document.getElementById(
-            "custom_server_details"
+            "custom_server_details",
           );
 
           const settings = trmnl.getSettings();
@@ -379,11 +421,14 @@
   <body>
     <div id="setup">
       <div id="setup-panel">
-        <img src="https://usetrmnl.com/images/brand/logos/logo--brand.svg" alt="TRMNL Logo" />
+        <img
+          src="https://usetrmnl.com/images/brand/logos/logo--brand.svg"
+          alt="TRMNL Logo"
+        />
 
-        <form onsubmit="return trmnl.saveSetup(event)">
+        <form onsubmit="return trmnl.saveSetup(event);">
           <fieldset>
-            <label for="macAddress">iPad MAC Address</label>
+            <label for="macAddress">Webkit Device's MAC Address</label>
             <input
               name="macAddress"
               id="macAddress"
@@ -392,33 +437,15 @@
               class="form-control"
               required
             />
+            <!--
             <a
               href="https://usetrmnl.com/devices/current/edit"
               target="_blank"
               style="margin-top: 0.5em; display: block"
             >
               Get the API key
-            </a>
+            </a>-->
           </fieldset>
-
-          <!--fieldset style="display: none">
-            <label for="api_key">Device API Key</label>
-            <input
-              name="api_key"
-              id="api_key"
-              type="text"
-              placeholder="API Key"
-              class="form-control"
-              required
-            />
-            <a
-              href="https://usetrmnl.com/devices/current/edit"
-              target="_blank"
-              style="margin-top: 0.5em; display: block"
-            >
-              Get the API key
-            </a>
-          </fieldset-->
 
           <details id="custom_server_details">
             <summary>Custom Server URL</summary>
@@ -440,13 +467,27 @@
     </div>
 
     <div id="screen-container">
-      <img id="screen" alt="display" onclick="trmnl.showSetupForm()" onkeyup="" />
+      <img
+        id="screen"
+        alt="display"
+        onclick="trmnl.showSetupForm()"
+        onkeyup=""
+      />
 
       <div id="error-container" style="display: none">
         <div id="error-message">Loading...</div>
         <div style="display: flex; gap: 1em; margin-top: 1em">
-          <button type="button" class="btn" onclick="trmnl.showSetupForm()">Setup</button>
-          <button type="button" class="btn" onclick="trmnl.fetchDisplay()">Retry</button>
+          <button type="button" class="btn" onclick="trmnl.showSetupForm()">
+            Setup
+          </button>
+          <button
+            type="button"
+            class="btn"
+            id="retry-button"
+            onclick="trmnl.fetchDisplay()"
+          >
+            Retry
+          </button>
         </div>
       </div>
     </div>
