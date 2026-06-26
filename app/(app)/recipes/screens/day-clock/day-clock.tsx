@@ -13,6 +13,7 @@ const useDoubling = true;
 export const paramsSchema = z.object({
 	$timezone: z.string().default(localTimezone()),
 });
+
 export const dataSchema = paramsSchema.extend({ currentDtm: z.date() });
 
 function getTimeParts(date: Date, $timezone: string) {
@@ -72,21 +73,27 @@ function fontSizesForWidth(width: number): PartFontSizes {
 }
 
 type DayClockData = {
-	$timezone: string;
 	currentDtm: Date;
 };
 
-type DayClockProps = DayClockData & {
-	width?: number;
-	height?: number;
-	screen?: ScreenProfile;
+type DayClockParams = {
+	params?: {
+		$timezone: string;
+	};
 };
+
+type DayClockProps = DayClockData &
+	DayClockParams & {
+		width?: number;
+		height?: number;
+		screen?: ScreenProfile;
+	};
 
 export default function DayClock({
 	width: renderWidth = DEFAULT_IMAGE_WIDTH,
 	height: renderHeight = DEFAULT_IMAGE_HEIGHT,
 	screen,
-	$timezone,
+	params,
 	currentDtm,
 }: DayClockProps) {
 	const screenProfile =
@@ -97,7 +104,7 @@ export default function DayClock({
 	// logical width instead of its 1872px physical output.
 	const width = screenProfile.logicalWidth;
 	const height = screenProfile.logicalHeight;
-
+	const $timezone = params?.$timezone ?? localTimezone();
 	const parts = getTimeParts(currentDtm, $timezone);
 	/* Longest test cases */
 	/*
@@ -137,7 +144,7 @@ export const definition: RecipeDefinition<
 		category: "display-components",
 		version: "0.1.0",
 		createdAt: "2026-06-12T00:00:00Z",
-		updatedAt: "2026-06-12T00:00:00Z",
+		updatedAt: "2026-06-25T00:00:00Z",
 		renderSettings: { supersample: useDoubling },
 	},
 	paramsSchema,
@@ -148,7 +155,7 @@ export const definition: RecipeDefinition<
 			typeof dataSchema
 		>;
 	},
-	Component: ({ width, height, data }) => (
-		<DayClock {...data} width={width} height={height} />
+	Component: ({ width, height, data, params }) => (
+		<DayClock {...data} params={params} width={width} height={height} />
 	),
 };

@@ -159,6 +159,11 @@ export default async function RecipePage({
 			definition.paramsSchema,
 		);
 		const hasParams = Object.keys(paramDefinitions).length > 0;
+		const recipeProps = {
+			data,
+			params: hasParams ? resolvedParams : undefined,
+		};
+
 		const [trmnlModels, trmnlPalettes] = await Promise.all([
 			listModels(),
 			listPalettes(),
@@ -238,7 +243,7 @@ export default async function RecipePage({
 					{definition.getData && (
 						<SectionCard label="Data">
 							<RecipeProps
-								props={data}
+								props={recipeProps}
 								slug={slug}
 								refreshAction={refreshData}
 							/>

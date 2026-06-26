@@ -23,6 +23,10 @@ export const reactRecipeLoaders: Record<string, RecipeModuleLoader> = {
 		),
 	"simple-text": () =>
 		import("../../app/(app)/recipes/screens/simple-text/simple-text"),
+	"upcoming-calendar-events": () =>
+		import(
+			"../../app/(app)/recipes/screens/upcoming-calendar-events/upcoming-calendar-events"
+		),
 	weather: () => import("../../app/(app)/recipes/screens/weather/weather"),
 	wikipedia: () =>
 		import("../../app/(app)/recipes/screens/wikipedia/wikipedia"),
@@ -39,6 +43,7 @@ export const reactRecipeSlugs = [
 	"not-found",
 	"responsive-example",
 	"simple-text",
+	"upcoming-calendar-events",
 	"weather",
 	"wikipedia",
 ] as const;
