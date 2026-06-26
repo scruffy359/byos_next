@@ -56,6 +56,53 @@ function getTimeParts(date: Date, $timezone: string) {
 	return { dayName, datePart, timePart };
 }
 
+type FormattedEventDate = {
+	date: string;
+	time: string;
+	relative: string | null;
+};
+
+function formatEventDate(utcDateString: string, timezone: string): FormattedEventDate {
+	const date = new Date(utcDateString);
+	const now = new Date();
+
+	const dateParts = new Intl.DateTimeFormat("en-US", {
+		timeZone: timezone,
+		month: "2-digit",
+		day: "2-digit",
+	}).formatToParts(date);
+	const month = dateParts.find((p) => p.type === "month")?.value ?? "";
+	const day = dateParts.find((p) => p.type === "day")?.value ?? "";
+
+	const time = new Intl.DateTimeFormat("en-US", {
+		timeZone: timezone,
+		hour: "2-digit",
+		minute: "2-digit",
+		hour12: true,
+	}).format(date);
+
+	// en-CA formats as YYYY-MM-DD, which parses as UTC midnight for clean day diffing
+	const toDateString = (d: Date) =>
+		new Intl.DateTimeFormat("en-CA", {
+			timeZone: timezone,
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		}).format(d);
+
+	const diffDays = Math.round(
+		(new Date(toDateString(date)).getTime() - new Date(toDateString(now)).getTime()) /
+			(1000 * 60 * 60 * 24),
+	);
+
+	const relative =
+		diffDays > 0 && diffDays < 7
+			? `in ${diffDays} day${diffDays === 1 ? "" : "s"}`
+			: null;
+
+	return { date: `${month}/${day}`, time, relative };
+}
+
 type UpcomingCalendarEventsParams = {
 	params?: {
 		$timezone: string;
