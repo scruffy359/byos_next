@@ -244,9 +244,10 @@
             }
 
             // wait 1 second to allow server-side caching to render
-            setTimeout(() => {
+            const timer = setTimeout(() => {
               console.log("delay timeout");
               trmnl.processResponse(data);
+              clearTimeout(timer);
             }, trmnl.waitShowScreenMsecs);
           } catch (error) {
             trmnl.showStatus("Network error: " + error.message);
