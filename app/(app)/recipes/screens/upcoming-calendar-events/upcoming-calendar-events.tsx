@@ -143,7 +143,7 @@ export default function UpcomingCalendarEvents({
 					<div
 						className={`w-full h-full flex p-4 justify-between flex-col sm:flex-col`}
 					>
-						<div className="font-inter text-[2vw]">Upcoming Events</div>
+						<div className="font-inter text-[1.5vw]">Upcoming Events</div>
 						<div className="font-inter text-[3vw] grow m-5">
 							Error: {message}
 						</div>
@@ -169,7 +169,7 @@ export default function UpcomingCalendarEvents({
 				<div
 					className={`w-full h-full flex p-4 justify-between flex-col sm:flex-col`}
 				>
-					<div className="font-inter text-[2vw]">Upcoming Events</div>
+					<div className="font-inter text-[1.5vw]">Upcoming Events</div>
 					<div className="grow mt-4">
 						{hasEvents &&
 							displayEvents?.map((event, index) => {
@@ -179,7 +179,7 @@ export default function UpcomingCalendarEvents({
 								);
 								return (
 									<div key={index}>
-										<div className="border border-solid rounded-md border-white p-2">
+										<div className="border border-solid rounded-md border-white mt-1 p-2">
 											<div className="flex flex-column">
 												<div className="grow">
 													<div className="font-inter text-[2vw]">

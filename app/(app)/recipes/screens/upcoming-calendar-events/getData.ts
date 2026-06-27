@@ -4,6 +4,8 @@ import { getDataFromFixture } from "./getDataFromFixture";
 
 const fixtureFile: string | null = null; //"fixture-data-1.json";
 
+const CauseUserPresentable = "upe-user-presentable";
+
 type UpcomingCalendarEventsParams = {
 	caldavUrl: string;
 	caldavUsername: string;
@@ -29,6 +31,29 @@ const getStartOfDay = () => {
 	return startOfDay;
 };
 
+const normalizeParams = (
+	params?: UpcomingCalendarEventsParams,
+): Required<UpcomingCalendarEventsParams> => {
+	const normalizedParams = {
+		caldavUrl: params?.caldavUrl?.trim() || "caldav.icloud.com",
+		caldavUsername: params?.caldavUsername?.trim() || "",
+		caldavApiKeySecret: params?.caldavApiKeySecret?.trim() || "",
+		calendarName: params?.calendarName?.trim() ?? "TRMNL",
+		eventCountToDisplay: params?.eventCountToDisplay ?? 3,
+	};
+
+	if (
+		!normalizedParams.caldavUsername ||
+		!normalizedParams.caldavApiKeySecret
+	) {
+		throw new Error("Invalid parameters", {
+			cause: CauseUserPresentable,
+		});
+	}
+
+	return normalizedParams;
+};
+
 const getUpcomingCalendarEventsData = async (
 	params?: UpcomingCalendarEventsParams,
 ): Promise<UpcomingCalendarEventsData> => {
@@ -42,7 +67,7 @@ const getUpcomingCalendarEventsData = async (
 
 	if (!baseUrl || !apikey || !username) {
 		throw new Error("Invalid parameters", {
-			cause: "upe-user-presentable",
+			cause: CauseUserPresentable,
 		});
 	}
 
@@ -74,7 +99,7 @@ const getUpcomingCalendarEventsData = async (
 
 		if (!showCalendar) {
 			throw new Error(`Calendar with name '${calendarName}' not found.`, {
-				cause: "upe-user-presentable",
+				cause: CauseUserPresentable,
 			});
 		}
 
@@ -82,6 +107,8 @@ const getUpcomingCalendarEventsData = async (
 		const events = await client.getEvents(showCalendar.url, {
 			start: getStartOfDay(),
 		});
+
+		console.info("Retreived new update-calendar-events", {});
 
 		const result = {
 			status: ResponseStatus.ok,
@@ -127,19 +154,6 @@ const fixSerializedCacheDates = (cachedData: UpcomingCalendarEventsData) => {
 	return { ...cachedData, events: fixedEvents };
 };
 
-const getCachedData = unstable_cache(
-	async (
-		params?: UpcomingCalendarEventsParams,
-	): Promise<UpcomingCalendarEventsData> => {
-		return await getUpcomingCalendarEventsData(params);
-	},
-	["upcoming-calendar-events-data"],
-	{
-		tags: ["calendar", "caldav"],
-		revalidate: 300, // Cache for 5 minutes
-	},
-);
-
 /**
  * Fixes unstable_cache issue where Date objects are persisted as String.
  * Convert the fields that should be Date to be correct type.
@@ -149,7 +163,27 @@ const getCachedData = unstable_cache(
 const getFixedCacheData = async (
 	params?: UpcomingCalendarEventsParams,
 ): Promise<UpcomingCalendarEventsData> => {
-	const cached = await getCachedData(params);
+	const normalizedParams = normalizeParams(params);
+
+	const getCachedData = unstable_cache(
+		async (
+			params?: UpcomingCalendarEventsParams,
+		): Promise<UpcomingCalendarEventsData> => {
+			return await getUpcomingCalendarEventsData(params);
+		},
+		[
+			"upcoming-calendar-events-data",
+			normalizedParams.caldavUrl,
+			normalizedParams.caldavUsername,
+			normalizedParams.calendarName,
+		],
+		{
+			tags: ["upcoming-calendar-events", "caldav"],
+			revalidate: 300, // Cache for 5 minutes
+		},
+	);
+
+	const cached = await getCachedData(normalizedParams);
 	return fixSerializedCacheDates(cached);
 };
 
@@ -163,7 +197,7 @@ const getData = async (
 		console.error("Error fetching upcoming-calendar-events:", error);
 
 		if (error instanceof Error) {
-			if (error.cause === "")
+			if (error.cause === CauseUserPresentable)
 				return {
 					status: ResponseStatus.error,
 					message: error.message,
