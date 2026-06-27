@@ -7,10 +7,8 @@ import { CalDAVClient } from "ts-caldav";
 			baseUrl: "https://caldav.icloud.com",
 			auth: {
 				type: "basic",
-				// username: "myuser",
-				// password: "mypassword",
-				username: "scrufmeister@icloud.com",
-				password: "owzy-crvv-vkoj-btlp",
+				username: "myuser",
+				password: "mypassword",
 			},
 		});
 

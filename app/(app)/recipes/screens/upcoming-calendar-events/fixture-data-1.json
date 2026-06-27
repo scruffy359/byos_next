@@ -1,43 +1,43 @@
 {
-    "today": "2026-06-26T18:15:00.000Z",
-    "events": [
-        {
-            "uid": "5bd204d4-5294-493f-87bb-f5e7b7a45ac0",
-            "summary": "Appt with Dr. Orvis",
-            "start": "2026-06-30T18:15:00.000Z",
-            "end": "2026-06-30T19:15:00.000Z",
-            "description": "Arrive by 2:00pm.",
-            "location": "General Hospital",
-            "etag": "\"mqsehq37\"",
-            "href": "/38322628/calendars/a38d1e39-e748-4610-846d-24c18e6aa9a2/5bd204d4-5294-493f-87bb-f5e7b7a45ac0.ics",
-            "wholeDay": false,
-            "startTzid": "America/New_York",
-            "endTzid": "America/New_York",
-            "alarms": [],
-            "customFields": {
-                "tzid": "America/New_York",
-                "x-apple-travel-advisory-behavior": "AUTOMATIC",
-                "transp": "OPAQUE"
-            }
-        },
-        {
-            "uid": "5bd204d4-5294-493f-87bb-f5e7b7a45ac0",
-            "summary": "Appt with Dr. Hartford",
-            "start": "2026-07-10T18:15:00.000Z",
-            "end": "2026-07-10T19:15:00.000Z",
-            "description": "Arrive by 2:00pm.",
-            "location": "General Hospital",
-            "etag": "\"mqsehq37\"",
-            "href": "/38322628/calendars/a38d1e39-e748-4610-846d-24c18e6aa9a2/5bd204d4-5294-493f-87bb-f5e7b7a45ac0.ics",
-            "wholeDay": true,
-            "startTzid": "America/New_York",
-            "endTzid": "America/New_York",
-            "alarms": [],
-            "customFields": {
-                "tzid": "America/New_York",
-                "x-apple-travel-advisory-behavior": "AUTOMATIC",
-                "transp": "OPAQUE"
-            }
-        }
-    ]
+	"today": "2026-06-26T18:15:00.000Z",
+	"events": [
+		{
+			"uid": "5bd204d4-5294-493f-87bb-f5e7b7a45ac0",
+			"summary": "Appt with Dr. Orvis",
+			"start": "2026-06-30T18:15:00.000Z",
+			"end": "2026-06-30T19:15:00.000Z",
+			"description": "Arrive by 2:00pm.",
+			"location": "General Hospital",
+			"etag": "\"mqsehq37\"",
+			"href": "/38322628/calendars/a38d1e39-e748-4610-846d-24c18e6aa9a2/5bd204d4-5294-493f-87bb-f5e7b7a45ac0.ics",
+			"wholeDay": false,
+			"startTzid": "America/New_York",
+			"endTzid": "America/New_York",
+			"alarms": [],
+			"customFields": {
+				"tzid": "America/New_York",
+				"x-apple-travel-advisory-behavior": "AUTOMATIC",
+				"transp": "OPAQUE"
+			}
+		},
+		{
+			"uid": "5bd204d4-5294-493f-87bb-f5e7b7a45ac0",
+			"summary": "Appt with Dr. Hartford",
+			"start": "2026-07-10T18:15:00.000Z",
+			"end": "2026-07-10T19:15:00.000Z",
+			"description": "Arrive by 2:00pm.",
+			"location": "General Hospital",
+			"etag": "\"mqsehq37\"",
+			"href": "/38322628/calendars/a38d1e39-e748-4610-846d-24c18e6aa9a2/5bd204d4-5294-493f-87bb-f5e7b7a45ac0.ics",
+			"wholeDay": true,
+			"startTzid": "America/New_York",
+			"endTzid": "America/New_York",
+			"alarms": [],
+			"customFields": {
+				"tzid": "America/New_York",
+				"x-apple-travel-advisory-behavior": "AUTOMATIC",
+				"transp": "OPAQUE"
+			}
+		}
+	]
 }

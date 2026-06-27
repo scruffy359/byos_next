@@ -28,7 +28,7 @@ export const paramsSchema = z.object({
 export const dataSchema = z.object({
 	status: z.any(),
 	message: z.optional(z.string()),
-	events: z.array(z.any()),
+	events: z.nullable(z.array(z.any())),
 });
 
 function getTimeParts(date: Date, $timezone: string) {
@@ -62,28 +62,28 @@ type FormattedEventDate = {
 	relative: string | null;
 };
 
-function formatEventDate(utcDateString: string, timezone: string): FormattedEventDate {
-	const date = new Date(utcDateString);
+function formatEventDate(date: Date, timezone: string): FormattedEventDate {
+	const locale = "en-US";
 	const now = new Date();
 
-	const dateParts = new Intl.DateTimeFormat("en-US", {
+	const dateParts = new Intl.DateTimeFormat(locale, {
 		timeZone: timezone,
-		month: "2-digit",
+		month: "short",
 		day: "2-digit",
 	}).formatToParts(date);
 	const month = dateParts.find((p) => p.type === "month")?.value ?? "";
 	const day = dateParts.find((p) => p.type === "day")?.value ?? "";
 
-	const time = new Intl.DateTimeFormat("en-US", {
+	const time = new Intl.DateTimeFormat(locale, {
 		timeZone: timezone,
-		hour: "2-digit",
+		hour: "numeric",
 		minute: "2-digit",
 		hour12: true,
 	}).format(date);
 
-	// en-CA formats as YYYY-MM-DD, which parses as UTC midnight for clean day diffing
+	// formats as YYYY-MM-DD, which parses as UTC midnight for clean day diffing
 	const toDateString = (d: Date) =>
-		new Intl.DateTimeFormat("en-CA", {
+		new Intl.DateTimeFormat(locale, {
 			timeZone: timezone,
 			year: "numeric",
 			month: "2-digit",
@@ -91,7 +91,8 @@ function formatEventDate(utcDateString: string, timezone: string): FormattedEven
 		}).format(d);
 
 	const diffDays = Math.round(
-		(new Date(toDateString(date)).getTime() - new Date(toDateString(now)).getTime()) /
+		(new Date(toDateString(date)).getTime() -
+			new Date(toDateString(now)).getTime()) /
 			(1000 * 60 * 60 * 24),
 	);
 
@@ -100,7 +101,7 @@ function formatEventDate(utcDateString: string, timezone: string): FormattedEven
 			? `in ${diffDays} day${diffDays === 1 ? "" : "s"}`
 			: null;
 
-	return { date: `${month}/${day}`, time, relative };
+	return { date: `${month} ${day}`, time, relative };
 }
 
 type UpcomingCalendarEventsParams = {
@@ -140,10 +141,13 @@ export default function UpcomingCalendarEvents({
 			<PreSatori width={width} height={height}>
 				<div className="relative w-full h-full p-4 bg-black flex flex-col text-white">
 					<div
-						className={`w-full h-full flex p-4 items-center justify-between flex-col sm:flex-col`}
-					></div>
-					<div className="font-inter text-[3vw]">Upcoming Events</div>
-					<div className="font-inter text-[3vw]">Error: {message}</div>
+						className={`w-full h-full flex p-4 justify-between flex-col sm:flex-col`}
+					>
+						<div className="font-inter text-[2vw]">Upcoming Events</div>
+						<div className="font-inter text-[3vw] grow m-5">
+							Error: {message}
+						</div>
+					</div>
 				</div>
 			</PreSatori>
 		);
@@ -166,25 +170,54 @@ export default function UpcomingCalendarEvents({
 					className={`w-full h-full flex p-4 justify-between flex-col sm:flex-col`}
 				>
 					<div className="font-inter text-[2vw]">Upcoming Events</div>
-					{hasEvents &&
-						displayEvents?.map((event, index) => {
-							return (
-								<div key={index}>
-									<div className="border border-solid rounded-md border-white p-2">
-										<div className="font-inter text-[2vw]">{event.summary}</div>
-										{event.location && (
-											<div className="font-inter text-[1vw]">
-												Location: {event.location}
+					<div className="grow mt-4">
+						{hasEvents &&
+							displayEvents?.map((event, index) => {
+								const formattedDate = formatEventDate(
+									event.start,
+									event.startTzid || localTimezone(),
+								);
+								return (
+									<div key={index}>
+										<div className="border border-solid rounded-md border-white p-2">
+											<div className="flex flex-column">
+												<div className="grow">
+													<div className="font-inter text-[2vw]">
+														{event.summary}
+													</div>
+													{event.location && (
+														<div className="font-inter text-[1.25vw]">
+															Location: {event.location}
+														</div>
+													)}
+													{event.description && (
+														<div className="font-inter text-[1.25vw]">
+															Notes: {event.description}
+														</div>
+													)}
+												</div>
+												<div className="text-center p-1">
+													<div className="font-inter text-[1.5vw]">
+														{formattedDate.date}
+													</div>
+													<div className="font-inter text-[1.5vw]">
+														{formattedDate.time}
+													</div>
+													{formattedDate.relative && (
+														<div className="font-inter text-[1.5vw]">
+															{formattedDate.relative}
+														</div>
+													)}
+												</div>
 											</div>
-										)}
+										</div>
 									</div>
-								</div>
-							);
-						})}
-
-					{hasEvents && (
+								);
+							})}
+					</div>
+					{remainingEventCount > 0 && (
 						<div className="font-inter text-[2vw] text-right">
-							Remaining: {remainingEventCount}
+							{remainingEventCount} future events
 						</div>
 					)}
 					{!hasEvents && (
