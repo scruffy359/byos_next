@@ -135,6 +135,12 @@
           const macAddress = opts.macAddress;
           const baseURL = opts.base_url || "https://usetrmnl.com";
 
+          const newSettings = {
+            macAddress: opts.macAddress,
+            base_url: opts.base_url,
+          };
+          trmnl.saveSettings(newSettings);
+
           const headers = {
             ID: macAddress,
             Model: "webkit",
@@ -166,10 +172,6 @@
               return;
             }
 
-            data.macAddress = opts.macAddress;
-            data.base_url = opts.base_url;
-            data.friendly_id = undefined;
-            data.api_key = undefined;
             trmnl.saveSettings(data);
 
             trmnl.ui.retryButton.style.display = "block";
