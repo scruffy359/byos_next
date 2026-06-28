@@ -2,9 +2,9 @@ import { connection, type NextRequest } from "next/server";
 import { cache } from "react";
 import { fetchDeviceByApiKey } from "@/app/actions/device";
 import {
-	BitmapAssociationType,
-	BitmapAssociationValues,
-	getBitmapAssociatedCacheEntry,
+	getRenderAssociatedCacheEntry,
+	RenderAssociationType,
+	RenderAssociationValues,
 } from "@/cache-handlers/bitmap-association-cache-handler";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
@@ -50,7 +50,7 @@ export async function GET(
 		const imageRequest = parseImageRequest(searchParams);
 		if (imageRequest instanceof Response) return imageRequest;
 
-		const associatedValues = await getBitmapAssociatedCacheEntry(associationId);
+		const associatedValues = await getRenderAssociatedCacheEntry(associationId);
 
 		console.log("GET /api/bitmap", {
 			recipeSlug,
@@ -59,13 +59,16 @@ export async function GET(
 		});
 
 		if (associatedValues === null) {
-			throw new Error(`No data associated with ID: ${associationId}`);
+			throw new Error(
+				`Screen cannot be found for Association ID: ${associationId}`,
+			);
 		}
 
 		const {
 			screenId,
 			type: associationType,
 			device: associationDevice,
+			dataParams,
 		} = associatedValues;
 
 		logger.info(
@@ -73,7 +76,7 @@ export async function GET(
 		);
 
 		if (
-			associationType === BitmapAssociationType.display &&
+			associationType === RenderAssociationType.display &&
 			!associationDevice
 		) {
 		}
@@ -97,8 +100,12 @@ export async function GET(
 			const imageHeight = imageRequest.height ?? profile.model.height;
 			const oversized = rejectOversizedImageArea(imageWidth, imageHeight);
 			if (oversized) return oversized;
+			const errorMessage =
+				searchParams.get("message") ??
+				(dataParams?.errorMessage as string) ??
+				"An unknown display error has occurred.";
 			const image = await renderErrorImage({
-				message: searchParams.get("message") ?? "Display error",
+				message: errorMessage,
 				width: imageWidth,
 				height: imageHeight,
 				grayscale: imageRequest.grayscaleLevels,
@@ -116,15 +123,6 @@ export async function GET(
 			const imageHeight = profile.model.height;
 			const oversized = rejectOversizedImageArea(imageWidth, imageHeight);
 			if (oversized) return oversized;
-			console.log({
-				slug: recipeSlug,
-				profile,
-				width: imageWidth,
-				height: imageHeight,
-				userId,
-				$timezone: internalValues.$timezone,
-				cookies: cookieHeader || undefined,
-			});
 			const image = await renderRecipeForDevice({
 				slug: recipeSlug,
 				profile,
@@ -231,13 +229,13 @@ const resolveProfileForError = async () => {
 };
 
 async function resolveDeviceProfileForRequest(
-	associationValues: BitmapAssociationValues,
+	associationValues: RenderAssociationValues,
 ): Promise<DeviceProfile> {
 	const { type: associationType } = associationValues;
 
-	if (associationType === BitmapAssociationType.display) {
+	if (associationType === RenderAssociationType.display) {
 		if (!associationValues.device) {
-			throw Error("Bitmap association for 'device' missing data.");
+			throw Error("Render association for 'device' missing data.");
 		}
 
 		const { apiKey } = associationValues.device;
@@ -257,11 +255,14 @@ async function resolveDeviceProfileForRequest(
 		throw new Error("Bitmap device/profile could not be determined.");
 	} // preview
 
-	if (!associationValues.preview) {
-		throw Error("Bitmap association for 'preview' missing data.");
+	if (
+		associationType === RenderAssociationType.recipePreview &&
+		!associationValues.recipePreview
+	) {
+		throw Error("Render association for 'recipePreview' missing data.");
 	}
 
-	const { modelName, paletteId } = associationValues.preview;
+	const { modelName, paletteId } = associationValues.renderSettings;
 
 	return getDeviceProfile(modelName, paletteId);
 }
@@ -291,7 +292,6 @@ const renderRecipeBitmap = cache(
 		$timezone: string,
 		cookies?: string,
 	) => {
-		//console.log({ where: "renderRecipeBitmap", recipeId, $timezone });
 		const renders = await renderRecipeToImage({
 			slug: recipeId,
 			imageWidth: width,
@@ -310,45 +310,45 @@ const renderRecipeBitmap = cache(
 );
 
 async function resolveAssociationData(
-	associatedValues: BitmapAssociationValues,
+	associatedValues: RenderAssociationValues,
 ) {
 	const {
 		type: associationType,
 		device: associationDevice,
-		preview,
+		recipePreview: preview,
 	} = associatedValues;
 
-	if (associationType === BitmapAssociationType.display) {
-		if (!associationDevice) {
-			throw new Error("Bitmap association entry missing 'device'");
-		}
-
-		const device = await fetchDeviceByApiKey(associationDevice.apiKey, {
-			assumeDbReady: true,
-		});
-
-		if (!device) {
-			console.error("Device not found with apiKey.");
-			return null;
+	if (associationType === RenderAssociationType.recipePreview) {
+		// preview path
+		if (!preview) {
+			throw new Error("Bitmap association entry missing 'preview'");
 		}
 
 		return {
-			userId: device.user_id,
+			userId: preview.userId,
 			internalValues: {
-				$timezone: device.timezone,
+				$timezone: localTimezone(),
 			},
 		};
 	}
 
-	// preview path
-	if (!preview) {
-		throw new Error("Bitmap association entry missing 'preview'");
+	if (!associationDevice) {
+		throw new Error("Render association entry missing 'device'");
+	}
+
+	const device = await fetchDeviceByApiKey(associationDevice.apiKey, {
+		assumeDbReady: true,
+	});
+
+	if (!device) {
+		console.error("Device not found with apiKey.");
+		return null;
 	}
 
 	return {
-		userId: preview.userId,
+		userId: device.user_id,
 		internalValues: {
-			$timezone: localTimezone(),
+			$timezone: device.timezone,
 		},
 	};
 }

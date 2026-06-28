@@ -1,11 +1,54 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
+import {
+	createErrorRenderAssociationValuesForDevice,
+	getCurrentScreenCacheEntry,
+	getRenderAssociatedCacheEntry,
+	RenderAssociationType,
+	RenderAssociationValues,
+	setRenderAssociationCacheEntry,
+} from "@/cache-handlers/bitmap-association-cache-handler";
 import { PageTemplate } from "@/components/common/page-template";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { DatabaseSetupPanel } from "@/components/setup/database-setup-panel";
 import { Badge } from "@/components/ui/badge";
 import { getInitData } from "@/lib/getInitData";
+import { Device } from "@/lib/types";
 import DashboardClientPage from "./client-page";
+
+const getCurrentScreenAssociation = async (
+	device: Device,
+): Promise<RenderAssociationValues> => {
+	"use server";
+	const associationValues = await getCurrentScreenCacheEntry(
+		device.friendly_id,
+	);
+
+	if (!associationValues) {
+		const errorAssociationValues =
+			await createErrorRenderAssociationValuesForDevice({
+				type: RenderAssociationType.devicePreview,
+				device,
+				errorMessage: "Cannot display latest screen for device.",
+			});
+
+		setRenderAssociationCacheEntry(errorAssociationValues);
+
+		return errorAssociationValues;
+	}
+
+	// ensure render cache entry exists
+	const existingRenderValues = await getRenderAssociatedCacheEntry(
+		associationValues.associationId,
+	);
+
+	// if not existings, set cache entry as it likely aged out.
+	if (!existingRenderValues) {
+		setRenderAssociationCacheEntry(associationValues);
+	}
+
+	return associationValues;
+};
 
 // Dashboard data component that uses the cached data
 const DashboardData = async () => {
@@ -21,7 +64,13 @@ const DashboardData = async () => {
 		);
 	}
 
-	return <DashboardClientPage devices={devices} systemLogs={systemLogs} />;
+	return (
+		<DashboardClientPage
+			devices={devices}
+			systemLogs={systemLogs}
+			getCurrentScreenAssociation={getCurrentScreenAssociation}
+		/>
+	);
 };
 
 export default async function Dashboard() {

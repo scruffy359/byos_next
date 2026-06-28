@@ -1,9 +1,10 @@
 import { Kysely, PostgresDialect } from "kysely";
 import { Pool } from "pg";
 import type { DB } from "./db.d";
+import { isDbConfigured } from "./utils";
 
 // Ensure DATABASE_URL is available
-if (!process.env.DATABASE_URL) {
+if (!isDbConfigured()) {
 	console.warn("DATABASE_URL is not set. Database connection may fail.");
 }
 

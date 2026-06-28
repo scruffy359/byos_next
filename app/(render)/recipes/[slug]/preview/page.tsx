@@ -93,13 +93,6 @@ const LiquidRenderComponent = ({
 	customFieldOverrides?: Record<string, unknown>;
 	userId: string | null;
 }) => {
-	/*
-	console.log({
-		where: "LiquidRenderComponent",
-		format,
-		useClient: typeof window !== "undefined",
-	});
-	*/
 	const result = use(renderLiquidRecipe(slug, userId, customFieldOverrides));
 
 	if (!result) {
@@ -147,16 +140,6 @@ export default async function RecipePreviewPage({
 		$timezone: $timezoneParam,
 	} = await searchParams;
 	const userId = consumeBrowserRenderContext(renderToken);
-	/*
-	console.log({
-		where: "RecipePreviewPage",
-		userId,
-		slug,
-		$timezoneParam,
-		useClient: typeof window !== "undefined",
-	});
-	*/
-
 	const width = widthParam ? Number.parseInt(widthParam, 10) : undefined;
 	const height = heightParam ? Number.parseInt(heightParam, 10) : undefined;
 	const profile =

@@ -96,14 +96,6 @@ export async function renderRecipeToImage({
 			model,
 			palette,
 		});
-		console.log("renderRecipeToImage 2", {
-			imageWidth,
-			imageHeight,
-			model,
-			paletteId,
-			screen,
-			$timezone,
-		});
 		const element = createElement(definition.Component, {
 			width: screen.logicalWidth,
 			height: screen.logicalHeight,
@@ -187,13 +179,6 @@ export async function renderRecipeForDevice({
 					},
 				}
 			: profile;
-	/*
-	console.log({
-		where: "renderRecipeForDevice",
-		renderProfile,
-		$timezone,
-	});
-	*/
 	const renders = await renderRecipeToImage({
 		slug,
 		imageWidth: profile.model.width,

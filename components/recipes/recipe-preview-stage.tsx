@@ -25,10 +25,9 @@ import {
 	ResolvePreviewImageUrlParameters,
 	ResolvePreviewImageUrlType,
 } from "@/lib/recipes/render/types";
-import { buildDeviceImageParameters } from "@/lib/render/device-image-url";
 import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import { FormatValue } from "@/lib/types";
-import { cn, localTimezone } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 type PreviewModel = {
 	name: string;
@@ -43,16 +42,6 @@ type PreviewPalette = {
 	id: string;
 	name: string;
 };
-
-/** Aligns with `getImageFilenameExtension` in `lib/render/device-image.ts` (client-safe). */
-function modelImagePathExtension(mimeType: string): string {
-	const map: Record<string, string> = {
-		"image/bmp": "bmp",
-		"image/png": "png",
-		"image/webp": "webp",
-	};
-	return map[mimeType] ?? mimeType.split("/").pop() ?? "png";
-}
 
 function chooseDefaultPaletteId(model: PreviewModel | null): string {
 	if (!model) return "";
@@ -125,13 +114,6 @@ export function RecipePreviewStage({
 	const [paletteId, setPaletteId] = useState<string>(() =>
 		chooseDefaultPaletteId(initialModel ?? null),
 	);
-	/*
-	console.log({
-		where: "RecipePreviewStage",
-		format,
-		useClient: typeof window !== "undefined",
-	});
-	*/
 	const deviceSimActive = sortedModels.length > 0;
 
 	const selectedModel = useMemo(() => {
@@ -245,7 +227,6 @@ export function RecipePreviewStage({
 	const fetchImageUrl = useCallback(
 		async (values: ResolvePreviewImageUrlParameters) => {
 			const url = await getPreviewImageUrl(values);
-			console.log("fetchImageUrl", { url, values });
 			setImageUrl(url);
 		},
 		[getPreviewImageUrl],

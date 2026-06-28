@@ -1,5 +1,12 @@
 import { env } from "node:process";
 import Valkey from "iovalkey";
+import { ScreenIdError } from "@/lib/recipes/render/types";
+import { buildDeviceImageUrl } from "@/lib/render/device-image-url";
+import {
+	DEFAULT_MODEL_NAME,
+	getDeviceProfile,
+} from "@/lib/trmnl/device-profile";
+import { Device } from "@/lib/types";
 
 const ExpireMinutes = 10;
 export const ExpireSeconds = 60 * ExpireMinutes;
@@ -21,36 +28,155 @@ const database = parseInt(env.KEYVALUE_DATABASE, 10);
 const password = env.KEYVALUE_PASSWORD;
 const bitmapAssociationCache = new Valkey(port, { password, db: database });
 
-const getKey = (associationId: string) => {
+export enum RenderAssociationType {
+	display = "display",
+	recipePreview = "recipe-preview",
+	devicePreview = "device-preview",
+}
+
+export type AssociationRenderSettings = {
+	// TODO: width & height?
+	modelName: string | null;
+	paletteId: string | null;
+	orientation: string; // why not considered in bitmap logic?
+};
+
+type AssociationPreview = {
+	/** The user requesting the preview from the UI. Will be `null` when in noDB mode.*/
+	userId: string | null;
+};
+
+const getAssociationKey = (associationId: string) => {
 	return `render-${associationId}`;
 };
 
-export enum BitmapAssociationType {
-	display = "display",
-	preview = "preview",
-}
-
 // TODO: persist parameters, allowing /api/display/current to show data at that point in time.
 // TODO: fix /api/display/current to know the actually current screen. Need another cache (FRIENDLY_ID -> ASSOCIATION_ID)
-export type BitmapAssociationValues = {
-	bitmapAssociationId: string;
-	type: BitmapAssociationType;
+export type RenderAssociationValues = {
+	associationId: string;
+	type: RenderAssociationType;
 	imageUrl: string;
 	screenId: string;
+	renderSettings: AssociationRenderSettings;
+	/** Information about the device when type is "display" or "device-preview" */
 	device?: {
 		id: number;
 		apiKey: string;
-		modelName: string | null;
-		paletteId: string | null;
 	};
-	preview?: {
-		/** The user requesting the preview from the UI. */
-		userId: string;
-		modelName: string;
-		paletteId: string | null;
-		orientation: string; // why not considered in bitmap logic?
-		params?: Record<string, unknown>; // TODO: not needed because we have userid
+	recipePreview?: AssociationPreview;
+	/** Snapshot of the data parameters at the time of request. */
+	dataParams: Record<string, unknown> | null;
+};
+
+export const createErrorRenderAssociationValuesForDevice = async ({
+	type,
+	device,
+	errorMessage,
+}: {
+	type: RenderAssociationType;
+	device: Device;
+	errorMessage: string;
+}) => {
+	return createRenderAssociationValuesForDevice({
+		type,
+		device,
+		screenId: ScreenIdError,
+		dataParams: {
+			errorMessage,
+		},
+	});
+};
+
+export const createRenderAssociationValuesForDevice = async ({
+	type,
+	device,
+	screenId,
+	recipePreview,
+	dataParams,
+}: {
+	type: RenderAssociationType;
+	screenId: string;
+	device: Device;
+	recipePreview?: AssociationPreview;
+	dataParams: Record<string, unknown> | null;
+}) => {
+	if (type === RenderAssociationType.recipePreview && !recipePreview) {
+		throw new Error("Association value missing 'recipePreview'");
+	}
+	const associationId = getNewAssociationId();
+
+	const modelName = device.model ?? DEFAULT_MODEL_NAME;
+	const paletteId = device.palette_id;
+
+	const profile = await getDeviceProfile(modelName, paletteId);
+
+	const imageUrl = buildDeviceImageUrl({
+		baseUrl: `/api/bitmap`,
+		imagePath: `${associationId}`,
+		profile,
+	});
+
+	const associationValues: RenderAssociationValues = {
+		associationId,
+		type,
+		imageUrl,
+		screenId: screenId,
+		renderSettings: {
+			modelName,
+			paletteId,
+			orientation: device.screen_orientation ?? "landscape",
+		},
+		device: {
+			id: device.id,
+			apiKey: device.api_key,
+		},
+		dataParams,
 	};
+
+	return associationValues;
+};
+
+export const createRenderAssociationValuesForSettings = async ({
+	type,
+	screenId,
+	renderSettings,
+	recipePreview,
+	dataParams,
+}: {
+	type: RenderAssociationType;
+	screenId: string;
+	renderSettings: Required<AssociationRenderSettings>;
+	recipePreview?: AssociationPreview;
+	dataParams: Record<string, unknown> | null;
+}) => {
+	if (type === RenderAssociationType.recipePreview && !recipePreview) {
+		throw new Error("Association value missing 'recipePreview'");
+	}
+
+	const associationId = getNewAssociationId();
+
+	const profile = await getDeviceProfile(
+		renderSettings.modelName,
+		renderSettings.paletteId,
+	);
+
+	const imageUrl = buildDeviceImageUrl({
+		baseUrl: `/api/bitmap`,
+		imagePath: `${associationId}`,
+		profile,
+	});
+
+	const associationValues: RenderAssociationValues = {
+		associationId,
+		type,
+		imageUrl,
+		screenId: screenId,
+		renderSettings,
+		recipePreview,
+		dataParams,
+	};
+
+	return associationValues;
 };
 
 /**
@@ -67,13 +193,13 @@ export const getNewAssociationId = () => {
 /**
  * Create an bitmap association cache entry which maps the `bitmapAssociationId` to
  * the Device and request Screen.
- * @param param0
+ * @param values values for cache entry
  */
-export const setBitmapAssociationCacheEntry = (
-	values: BitmapAssociationValues,
+export const setRenderAssociationCacheEntry = (
+	values: RenderAssociationValues,
 ) => {
-	const { bitmapAssociationId } = values;
-	const cacheKey = getKey(bitmapAssociationId);
+	const { associationId: bitmapAssociationId } = values;
+	const cacheKey = getAssociationKey(bitmapAssociationId);
 	const cacheValue = values;
 	bitmapAssociationCache.set(
 		cacheKey,
@@ -82,13 +208,47 @@ export const setBitmapAssociationCacheEntry = (
 		ExpireSeconds,
 	);
 
-	console.log("Created bitmap association", { cacheKey, cacheValue });
+	console.log("Created render association", { cacheKey, cacheValue });
 };
 
-export const getBitmapAssociatedCacheEntry = async (
+export const getRenderAssociatedCacheEntry = async (
 	associationId: string,
-): Promise<BitmapAssociationValues | null> => {
-	const cacheKey = getKey(associationId);
+): Promise<RenderAssociationValues | null> => {
+	const cacheKey = getAssociationKey(associationId);
+	const value = await bitmapAssociationCache.get(cacheKey);
+
+	if (!value) {
+		return null;
+	}
+
+	const object = JSON.parse(value);
+	return object;
+};
+
+const getCurrentScreenKey = (deviceFriendlyName: string) => {
+	return `current-screen-${deviceFriendlyName}`;
+};
+
+/**
+ * Create an bitmap association cache entry which maps the `bitmapAssociationId` to
+ * the Device and request Screen.
+ * @param param0
+ */
+export const setCurrentScreenCacheEntry = (
+	deviceFriendlyName: string,
+	values: RenderAssociationValues,
+) => {
+	const cacheKey = getCurrentScreenKey(deviceFriendlyName);
+	const cacheValue = values;
+	bitmapAssociationCache.set(cacheKey, JSON.stringify(cacheValue));
+
+	console.log("Assigned current screen", { cacheKey, cacheValue });
+};
+
+export const getCurrentScreenCacheEntry = async (
+	deviceFriendlyName: string,
+): Promise<RenderAssociationValues | null> => {
+	const cacheKey = getCurrentScreenKey(deviceFriendlyName);
 	const value = await bitmapAssociationCache.get(cacheKey);
 
 	if (!value) {

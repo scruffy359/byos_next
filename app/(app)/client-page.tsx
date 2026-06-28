@@ -3,6 +3,8 @@
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { RenderAssociationValues } from "@/cache-handlers/bitmap-association-cache-handler";
 import { DeviceFrame } from "@/components/common/device-frame";
 import { StatusIndicator } from "@/components/common/status-indicator";
 import { Badge } from "@/components/ui/badge";
@@ -19,8 +21,6 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
-import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import type { Device, SystemLog } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";
@@ -28,28 +28,45 @@ import { formatDate, getDeviceStatus } from "@/utils/helpers";
 interface DashboardClientPageProps {
 	devices: Device[];
 	systemLogs: SystemLog[];
+	getCurrentScreenAssociation: (
+		device: Device,
+	) => Promise<RenderAssociationValues | null>;
 }
 
 export default function DashboardClientPage({
 	devices,
 	systemLogs,
+	getCurrentScreenAssociation,
 }: DashboardClientPageProps) {
-	const processedDevices = devices.map((device) => ({
-		...device,
-		status: getDeviceStatus(device),
-	}));
+	const processedDevices = useMemo(
+		() =>
+			devices.map((device) => ({
+				...device,
+				status: getDeviceStatus(device),
+			})),
+		[devices],
+	);
 
-	const onlineDevices = processedDevices.filter((d) => d.status === "online");
-	const offlineDevices = processedDevices.filter((d) => d.status === "offline");
+	const onlineDevices = useMemo(
+		() => processedDevices.filter((d) => d.status === "online"),
+		[processedDevices],
+	);
+	const offlineDevices = useMemo(
+		() => processedDevices.filter((d) => d.status === "offline"),
+		[processedDevices],
+	);
 
-	const lastUpdatedDevice =
-		processedDevices.length > 0
-			? processedDevices.sort(
-					(a, b) =>
-						new Date(b.last_update_time || "").getTime() -
-						new Date(a.last_update_time || "").getTime(),
-				)[0]
-			: null;
+	const lastUpdatedDevice = useMemo(
+		() =>
+			processedDevices.length > 0
+				? processedDevices.sort(
+						(a, b) =>
+							new Date(b.last_update_time || "").getTime() -
+							new Date(a.last_update_time || "").getTime(),
+					)[0]
+				: null,
+		[processedDevices],
+	);
 
 	const isPortrait = lastUpdatedDevice?.screen_orientation === "portrait";
 	// Orientation-adjusted device resolution, used for BOTH the rendered image
@@ -60,9 +77,24 @@ export default function DashboardClientPage({
 	const previewHeight = isPortrait
 		? lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH
 		: lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT;
-	const latestScreenSrc = lastUpdatedDevice
-		? buildLatestScreenSrc(lastUpdatedDevice, previewWidth, previewHeight)
-		: "";
+
+	const [latestScreenAssocation, setLatestScreenAssocation] =
+		useState<RenderAssociationValues | null>(null);
+
+	const fetchCurrentScreenImageUrl = useCallback(
+		async (device: Device) => {
+			const values = await getCurrentScreenAssociation(device);
+			setLatestScreenAssocation(values);
+		},
+		[getCurrentScreenAssociation],
+	);
+
+	useEffect(() => {
+		if (!lastUpdatedDevice) {
+			return;
+		}
+		fetchCurrentScreenImageUrl(lastUpdatedDevice);
+	}, [lastUpdatedDevice, fetchCurrentScreenImageUrl]);
 
 	return (
 		<div className="space-y-4">
@@ -92,7 +124,7 @@ export default function DashboardClientPage({
 					</header>
 
 					<div className="flex flex-1 items-center justify-center bg-[radial-gradient(circle_at_50%_0%,theme(colors.muted/40),transparent_70%)] p-6">
-						{lastUpdatedDevice ? (
+						{lastUpdatedDevice && latestScreenAssocation ? (
 							<div
 								className={cn(
 									"w-full",
@@ -105,8 +137,8 @@ export default function DashboardClientPage({
 									screenAspectRatio={`${previewWidth} / ${previewHeight}`}
 								>
 									<Image
-										src={latestScreenSrc}
-										alt={`${lastUpdatedDevice.screen} screen`}
+										src={latestScreenAssocation.imageUrl}
+										alt={`${latestScreenAssocation.screenId} screen`}
 										fill
 										className="absolute inset-0 h-full w-full object-cover"
 										style={{ imageRendering: "pixelated" }}
@@ -247,31 +279,6 @@ export default function DashboardClientPage({
 			</section>
 		</div>
 	);
-}
-
-function buildLatestScreenSrc(
-	device: Device,
-	width: number,
-	height: number,
-): string {
-	const params = new URLSearchParams({
-		width: String(width),
-		height: String(height),
-		grayscale: String(normalizeGrayscale(device.grayscale)),
-		model: device.model?.trim() || DEFAULT_MODEL_NAME,
-	});
-	const paletteId = device.palette_id?.trim();
-	if (paletteId) {
-		params.set("palette_id", paletteId);
-	}
-
-	if (!device.screen) {
-		params.set("message", "Device screen is not configured");
-		return `/api/bitmap/error.png?${params.toString()}`;
-	}
-	params.set("$timezone", device.timezone);
-
-	return `/api/bitmap/${device.screen}.png?${params.toString()}`;
 }
 
 function Stat({

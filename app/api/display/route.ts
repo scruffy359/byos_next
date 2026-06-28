@@ -1,7 +1,9 @@
 import {
-	BitmapAssociationType,
 	getNewAssociationId,
-	setBitmapAssociationCacheEntry,
+	RenderAssociationType,
+	RenderAssociationValues,
+	setCurrentScreenCacheEntry,
+	setRenderAssociationCacheEntry,
 } from "@/cache-handlers/bitmap-association-cache-handler";
 import { db } from "@/lib/database/db";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
@@ -201,19 +203,30 @@ export async function GET(request: Request) {
 				break;
 		}
 
-		// associate the uniqueId with screen and device
-		setBitmapAssociationCacheEntry({
-			bitmapAssociationId: uniqueId,
-			type: BitmapAssociationType.display,
+		// TODO: lookup the parameters and add to association values
+
+		const associationValues: RenderAssociationValues = {
+			associationId: uniqueId,
+			type: RenderAssociationType.display,
 			imageUrl,
 			screenId: screenToDisplay,
+			renderSettings: {
+				modelName: device.model,
+				paletteId: device.palette_id,
+				orientation: device.screen_orientation ?? "landscape",
+			},
 			device: {
 				id: device.id,
 				apiKey: device.api_key,
-				modelName: device.model,
-				paletteId: device.palette_id,
 			},
-		});
+			dataParams: null,
+		};
+
+		// associate the uniqueId with screen and device
+		setRenderAssociationCacheEntry(associationValues);
+
+		// save this as the device's current screen
+		setCurrentScreenCacheEntry(device.friendly_id, associationValues);
 
 		precacheImageInBackground(imageUrl, device.friendly_id);
 		updateDeviceStatus(device, headers, dynamicRefreshRate);

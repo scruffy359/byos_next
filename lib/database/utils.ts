@@ -94,7 +94,7 @@ export async function checkDbConnection(): Promise<DbStatus> {
 }
 
 export async function getDbStatus(): Promise<DbStatus> {
-	if (!process.env.DATABASE_URL) {
+	if (!isDbConfigured()) {
 		return {
 			ready: false,
 			error: "ERROR_ENV_VAR_DATABASE_URL_NOT_SET",
@@ -102,6 +102,19 @@ export async function getDbStatus(): Promise<DbStatus> {
 		};
 	}
 	return checkDbConnection();
+}
+
+/**
+ * Validates if `DATABASE_URL` is defined.
+ * @returns
+ */
+export function isDbConfigured(): boolean {
+	const url = process.env.DATABASE_URL;
+	return typeof url !== "undefined";
+}
+
+export function isNoDbMode(): boolean {
+	return !isDbConfigured();
 }
 
 export async function getDatabaseSetupStatus(): Promise<DatabaseSetupStatus> {

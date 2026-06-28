@@ -1,3 +1,6 @@
+export const ScreenIdError = "error";
+export const ScreenIdNotFound = "not-found";
+
 export type ResolvePreviewImageUrlParameters = {
 	screenId: string;
 	modelName: string;

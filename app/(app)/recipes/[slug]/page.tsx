@@ -8,9 +8,9 @@ import {
 	updateScreenParams,
 } from "@/app/actions/screens-params";
 import {
-	BitmapAssociationType,
-	getNewAssociationId,
-	setBitmapAssociationCacheEntry,
+	createRenderAssociationValuesForSettings,
+	RenderAssociationType,
+	setRenderAssociationCacheEntry,
 } from "@/cache-handlers/bitmap-association-cache-handler";
 import { PageTemplate } from "@/components/common/page-template";
 import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
@@ -20,7 +20,7 @@ import { ScreenParamsForm } from "@/components/recipes/screen-params-form";
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { withUserScope } from "@/lib/database/scoped-db";
-import { checkDbConnection } from "@/lib/database/utils";
+import { checkDbConnection, isNoDbMode } from "@/lib/database/utils";
 import { listAllRecipes } from "@/lib/recipes/catalog";
 import {
 	customFieldsToParamDefinitions,
@@ -30,8 +30,6 @@ import { getRendererType } from "@/lib/recipes/render/rasterize";
 import { ResolvePreviewImageUrlParameters } from "@/lib/recipes/render/types";
 import { resolveReactRecipe } from "@/lib/recipes/runtime/react";
 import { zodObjectToParamDefinitions } from "@/lib/recipes/zod-form";
-import { buildDeviceImageUrl } from "@/lib/render/device-image-url";
-import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import { listModels, listPalettes } from "@/lib/trmnl/registry";
 import { FormatValue } from "@/lib/types";
 import { localTimezone } from "@/lib/utils";
@@ -47,36 +45,32 @@ export async function getPreviewImageUrl({
 	orientation,
 }: ResolvePreviewImageUrlParameters): Promise<string> {
 	"use server";
-	const associationId = getNewAssociationId();
-	const userId = await getCurrentUserId();
+	const noDb = isNoDbMode();
 
-	if (!userId) {
+	const userId = !noDb ? await getCurrentUserId() : null;
+
+	if (!noDb && !userId) {
 		throw Error("Current user could not be determined.");
 	}
 
-	const profile = await getDeviceProfile(modelName, paletteId);
-
-	const imageUrl = buildDeviceImageUrl({
-		baseUrl: `/api/bitmap`,
-		imagePath: `${associationId}`,
-		profile,
-	});
-
-	// TODO: support direct width/height? or only side-effect of these params.
-	setBitmapAssociationCacheEntry({
-		type: BitmapAssociationType.preview,
-		bitmapAssociationId: associationId,
+	const associationValues = await createRenderAssociationValuesForSettings({
+		type: RenderAssociationType.recipePreview,
 		screenId,
-		imageUrl,
-		preview: {
-			userId,
+		renderSettings: {
 			modelName,
 			paletteId,
 			orientation,
 		},
+		recipePreview: {
+			userId,
+		},
+		dataParams: null,
 	});
 
-	return imageUrl;
+	// TODO: support direct width/height? or only side-effect of these params.
+	setRenderAssociationCacheEntry(associationValues);
+
+	return associationValues.imageUrl;
 }
 
 async function refreshData(slug: string) {
@@ -186,14 +180,6 @@ export default async function RecipePage({
 	await connection();
 	const { slug } = await params;
 	const { orientation, format = DefaultFormat } = await searchParams;
-	/*
-	console.log({
-		where: "RecipePage",
-		slug,
-		format,
-		useClient: typeof window !== "undefined",
-	});
-	*/
 	const formatValue = format as FormatValue;
 	const isPortrait = orientation === "portrait";
 	const $timezone = localTimezone();
