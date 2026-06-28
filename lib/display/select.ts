@@ -100,12 +100,10 @@ export async function selectDisplayForDevice(
 
 	const imageUrlAssociated = buildDeviceImageUrl({
 		baseUrl: `${hints.hostUrl}/api/bitmap`,
-		// TODO: remove "screen" from image path
-		imagePath: `${screen}.${hints.bitmapAssociationId}`,
+		imagePath: hints.bitmapAssociationId,
 		profile,
 	});
 
-	console.log("selectDisplayForDevice", { imageUrlAssociated });
 	return {
 		screen,
 		profile,

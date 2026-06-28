@@ -323,9 +323,12 @@ async function resolveAssociationData(
 			throw new Error("Bitmap association entry missing 'device'");
 		}
 
-		const device = await fetchDeviceByApiKey(associationDevice.apiKey);
+		const device = await fetchDeviceByApiKey(associationDevice.apiKey, {
+			assumeDbReady: true,
+		});
 
 		if (!device) {
+			console.error("Device not found with apiKey.");
 			return null;
 		}
 

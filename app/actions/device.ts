@@ -2,7 +2,7 @@
 
 import { BYOS_MONO_USER_ID, getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
-import { withUserScope } from "@/lib/database/scoped-db";
+import { withDeviceApiKey, withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import {
 	createDefaultRefreshSchedule,
@@ -51,15 +51,17 @@ export async function fetchDeviceByFriendlyId(
  */
 export async function fetchDeviceByApiKey(
 	apiKey: string,
+	options: { assumeDbReady?: boolean } = {},
 ): Promise<Device | null> {
-	const { ready } = await checkDbConnection();
-
-	if (!ready) {
-		console.warn("Database client not initialized");
+	if (!options.assumeDbReady) {
+		const { ready } = await checkDbConnection();
+		if (!ready) {
+			console.warn("Database client not initialized");
+		}
 		return null;
 	}
 
-	const device = await withUserScope((scopedDb) =>
+	const device = await withDeviceApiKey(apiKey, (scopedDb) =>
 		scopedDb
 			.selectFrom("devices")
 			.selectAll()

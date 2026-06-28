@@ -36,7 +36,7 @@ Returns the next screen for a device along with refresh and optional firmware in
 
 **Headers**
 - `ID` (required): Device MAC address.
-- `Access-Token` (recommended): Issued API key.
+- `Access-Token` (required): Device's issued API key.
 - Optional telemetry: `Refresh-Rate`, `Battery-Voltage`, `FW-Version`, `RSSI`.
 
 **Example**
@@ -48,6 +48,18 @@ curl -X GET http://<BASE_URL>/api/display \
   -H "FW-Version: 1.0.0" \
   -H "RSSI: -45"
 ```
+
+TODO: introduce key cache
+
+key === guid
+value === databag {
+  device_id (db id)
+  api_key?
+  generated_dtm
+  screen_name
+  parameters
+}
+TTL 10min
 
 **Success Response**
 ```json

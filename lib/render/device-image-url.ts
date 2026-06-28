@@ -8,6 +8,11 @@ const MIME_EXTENSION: Record<string, string> = {
 	"image/webp": "webp",
 };
 
+export function getImageFilenameExtensionFromMimeType(mimeType: string) {
+	"use client";
+	return MIME_EXTENSION[mimeType] ?? mimeType.split("/").pop() ?? "png";
+}
+
 export function getImageFilenameExtension(profile: DeviceProfile): string {
 	return (
 		MIME_EXTENSION[profile.model.mime_type] ??

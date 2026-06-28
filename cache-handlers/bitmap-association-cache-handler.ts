@@ -13,13 +13,16 @@ declare global {
 		}
 	}
 }
+
+// TODO: support noDB mode, use in-memory cache (only for recipe testing).
+
 const port = parseInt(env.KEYVALUE_PORT, 10);
 const database = parseInt(env.KEYVALUE_DATABASE, 10);
 const password = env.KEYVALUE_PASSWORD;
 const bitmapAssociationCache = new Valkey(port, { password, db: database });
 
 const getKey = (associationId: string) => {
-	return `bitmap-${associationId}`;
+	return `render-${associationId}`;
 };
 
 export enum BitmapAssociationType {
