@@ -7,6 +7,11 @@ import {
 	getScreenParams,
 	updateScreenParams,
 } from "@/app/actions/screens-params";
+import {
+	BitmapAssociationType,
+	getNewAssociationId,
+	setBitmapAssociationCacheEntry,
+} from "@/cache-handlers/bitmap-association-cache-handler";
 import { PageTemplate } from "@/components/common/page-template";
 import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
 import { RecipePreviewStage } from "@/components/recipes/recipe-preview-stage";
@@ -22,8 +27,11 @@ import {
 	fetchLiquidRecipeSettings,
 } from "@/lib/recipes/liquid-renderer";
 import { getRendererType } from "@/lib/recipes/render/rasterize";
+import { ResolvePreviewImageUrlParameters } from "@/lib/recipes/render/types";
 import { resolveReactRecipe } from "@/lib/recipes/runtime/react";
 import { zodObjectToParamDefinitions } from "@/lib/recipes/zod-form";
+import { buildDeviceImageUrl } from "@/lib/render/device-image-url";
+import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import { listModels, listPalettes } from "@/lib/trmnl/registry";
 import { FormatValue } from "@/lib/types";
 import { localTimezone } from "@/lib/utils";
@@ -32,9 +40,49 @@ export async function generateMetadata() {
 	return {};
 }
 
+export async function getPreviewImageUrl({
+	screenId,
+	modelName,
+	paletteId,
+	orientation,
+}: ResolvePreviewImageUrlParameters): Promise<string> {
+	"use server";
+	const associationId = getNewAssociationId();
+	const userId = await getCurrentUserId();
+
+	if (!userId) {
+		throw Error("Current user could not be determined.");
+	}
+
+	const profile = await getDeviceProfile(modelName, paletteId);
+
+	const imageUrl = buildDeviceImageUrl({
+		baseUrl: `/api/bitmap`,
+		imagePath: `${associationId}`,
+		profile,
+	});
+
+	// TODO: support direct width/height? or only side-effect of these params.
+	setBitmapAssociationCacheEntry({
+		type: BitmapAssociationType.preview,
+		bitmapAssociationId: associationId,
+		screenId,
+		imageUrl,
+		preview: {
+			userId,
+			modelName,
+			paletteId,
+			orientation,
+		},
+	});
+
+	return imageUrl;
+}
+
 async function refreshData(slug: string) {
 	"use server";
 	await new Promise((resolve) => setTimeout(resolve, 500));
+	console.log(`invalidate tag: ${slug}`);
 	revalidateTag(slug, "max");
 }
 
@@ -208,6 +256,7 @@ export default async function RecipePage({
 						trmnlModels={trmnlModels}
 						trmnlPalettes={trmnlPalettes}
 						format={formatValue}
+						getPreviewImageUrl={getPreviewImageUrl}
 						bmpPipeline={
 							<span>
 								JSX → pre-satori → {getRendererType()} PNG → render-bmp →{" "}
@@ -320,6 +369,7 @@ export default async function RecipePage({
 					reactPipeline={
 						<span>Liquid → liquidjs → HTML → browser preview</span>
 					}
+					getPreviewImageUrl={getPreviewImageUrl}
 				/>
 				{hasParams && (
 					<ScreenParamsForm

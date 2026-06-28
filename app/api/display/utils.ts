@@ -91,7 +91,9 @@ export const precacheImageInBackground = (
 	imageUrl: string,
 	friendlyId: string,
 ): void => {
-	fetch(imageUrl, { method: "GET" })
+	fetch(imageUrl, {
+		method: "GET",
+	})
 		.then((response) => {
 			if (!response.ok) {
 				throw new Error(`Failed to cache image: ${response.status}`);

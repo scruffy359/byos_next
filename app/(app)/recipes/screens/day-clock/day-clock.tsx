@@ -56,7 +56,7 @@ const FONT_SCALE: Record<string, PartFontSizes> = {
 	//sm: { day: "text-6xl", time: "text-8xl", date: "text-6xl" },
 	md: { day: "text-[5vw]", time: "text-[8vw]", date: "text-[4vw]" },
 	//md: { day: "text-8xl", time: "text-[10rem]", date: "text-7xl" },
-	lg: { day: "text-[5vw]", time: "text-[8vw]", date: "text-[4vw]" },
+	lg: { day: "text-[4vw]", time: "text-[5vw]", date: "text-[2vw]" },
 	//lg: { day: "text-[10rem]", time: "text-[16rem]", date: "text-[10rem]" },
 	xl: { day: "text-[5vw]", time: "text-[8vw]", date: "text-[4vw]" },
 	//xl: { day: "text-[10rem]", time: "text-[16rem]", date: "text-[8rem]" },
@@ -96,6 +96,7 @@ export default function DayClock({
 	params,
 	currentDtm,
 }: DayClockProps) {
+	console.log("DayClock", { screen, renderWidth, renderHeight });
 	const screenProfile =
 		screen ?? createScreenProfile({ width: renderWidth, height: renderHeight });
 	// The grid is coordinate-positioned (event top = time→y, left = day*colWidth),
@@ -155,7 +156,13 @@ export const definition: RecipeDefinition<
 			typeof dataSchema
 		>;
 	},
-	Component: ({ width, height, data, params }) => (
-		<DayClock {...data} params={params} width={width} height={height} />
+	Component: ({ width, height, data, params, screen }) => (
+		<DayClock
+			{...data}
+			params={params}
+			width={width}
+			height={height}
+			screen={screen}
+		/>
 	),
 };

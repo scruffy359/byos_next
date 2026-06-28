@@ -28,6 +28,7 @@ import { localTimezone } from "../utils";
 
 type RequestHints = {
 	hostUrl: string;
+	bitmapAssociationId: string;
 	width?: number | null;
 	height?: number | null;
 	base64?: boolean;
@@ -40,6 +41,7 @@ export type DisplaySelection = {
 	height: number;
 	grayscaleLevels: GrayscaleLevel;
 	imageUrl: string;
+	imageUrlAssociated: string;
 	baseQueryParams: string;
 };
 
@@ -96,6 +98,14 @@ export async function selectDisplayForDevice(
 		query: baseQueryParams,
 	});
 
+	const imageUrlAssociated = buildDeviceImageUrl({
+		baseUrl: `${hints.hostUrl}/api/bitmap`,
+		// TODO: remove "screen" from image path
+		imagePath: `${screen}.${hints.bitmapAssociationId}`,
+		profile,
+	});
+
+	console.log("selectDisplayForDevice", { imageUrlAssociated });
 	return {
 		screen,
 		profile,
@@ -104,5 +114,6 @@ export async function selectDisplayForDevice(
 		grayscaleLevels,
 		imageUrl,
 		baseQueryParams,
+		imageUrlAssociated,
 	};
 }

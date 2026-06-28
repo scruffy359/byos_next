@@ -1,3 +1,8 @@
+import {
+	BitmapAssociationType,
+	getNewAssociationId,
+	setBitmapAssociationCacheEntry,
+} from "@/cache-handlers/bitmap-association-cache-handler";
 import { db } from "@/lib/database/db";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
@@ -37,9 +42,7 @@ function errorImageQuery(baseQueryParams: string, message: string): string {
 export async function GET(request: Request) {
 	const headers = parseRequestHeaders(request);
 	const baseUrl = `${headers.hostUrl}/api/bitmap`;
-	const uniqueId =
-		Math.random().toString(36).substring(2, 7) +
-		Date.now().toString(36).slice(-3);
+	const uniqueId = getNewAssociationId();
 
 	if (!headers.apiKey) {
 		return buildErrorResponse(
@@ -89,12 +92,13 @@ export async function GET(request: Request) {
 
 		const selection = await selectDisplayForDevice(device, {
 			hostUrl: headers.hostUrl,
+			bitmapAssociationId: uniqueId,
 			width: headers.width,
 			height: headers.height,
 			base64: headers.base64,
 		});
 
-		let { screen: screenToDisplay, imageUrl } = selection;
+		let { screen: screenToDisplay, imageUrlAssociated: imageUrl } = selection;
 		let dynamicRefreshRate: number;
 
 		switch (device.display_mode) {
@@ -151,6 +155,7 @@ export async function GET(request: Request) {
 					});
 					dynamicRefreshRate = DEFAULT_REFRESH_RATE;
 				}
+				/* not needed?
 				if (screenToDisplay !== "error") {
 					imageUrl = buildDeviceImageUrl({
 						baseUrl,
@@ -158,7 +163,7 @@ export async function GET(request: Request) {
 						profile: selection.profile,
 						query: selection.baseQueryParams,
 					});
-				}
+				}*/
 				break;
 			}
 
@@ -196,7 +201,20 @@ export async function GET(request: Request) {
 				break;
 		}
 
-		// Remove precache as cache lookup is never used.
+		// associate the uniqueId with screen and device
+		setBitmapAssociationCacheEntry({
+			bitmapAssociationId: uniqueId,
+			type: BitmapAssociationType.display,
+			imageUrl,
+			screenId: screenToDisplay,
+			device: {
+				id: device.id,
+				apiKey: device.api_key,
+				modelName: device.model,
+				paletteId: device.palette_id,
+			},
+		});
+
 		precacheImageInBackground(imageUrl, device.friendly_id);
 		updateDeviceStatus(device, headers, dynamicRefreshRate);
 

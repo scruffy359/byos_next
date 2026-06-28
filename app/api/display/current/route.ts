@@ -63,6 +63,7 @@ export async function GET(request: Request) {
 			);
 		}
 
+		// TODO: fix
 		const deviceData = device as unknown as Device;
 		const selection = await selectDisplayForDevice(deviceData, {
 			hostUrl: headers.hostUrl,
@@ -80,6 +81,7 @@ export async function GET(request: Request) {
 			source: "api/display/current",
 			metadata: {
 				deviceId: deviceData.friendly_id,
+				// TODO: this is not correct as it's not the actually active screen.
 				screen: selection.screen,
 			},
 		});

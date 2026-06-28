@@ -47,6 +47,34 @@ export async function fetchDeviceByFriendlyId(
 }
 
 /**
+ * Fetch a single device by api_key
+ */
+export async function fetchDeviceByApiKey(
+	apiKey: string,
+): Promise<Device | null> {
+	const { ready } = await checkDbConnection();
+
+	if (!ready) {
+		console.warn("Database client not initialized");
+		return null;
+	}
+
+	const device = await withUserScope((scopedDb) =>
+		scopedDb
+			.selectFrom("devices")
+			.selectAll()
+			.where("api_key", "=", apiKey)
+			.executeTakeFirst(),
+	);
+
+	if (!device) {
+		return null;
+	}
+
+	return device as unknown as Device;
+}
+
+/**
  * Fetch logs for a specific device
  */
 export async function fetchDeviceLogs(friendlyId: string): Promise<Log[]> {

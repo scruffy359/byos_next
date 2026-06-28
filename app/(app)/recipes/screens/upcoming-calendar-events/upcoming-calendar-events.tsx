@@ -31,31 +31,6 @@ export const dataSchema = z.object({
 	events: z.nullable(z.array(z.any())),
 });
 
-function getTimeParts(date: Date, $timezone: string) {
-	const intlDateObjWeekday = new Intl.DateTimeFormat("en-US", {
-		timeZone: $timezone,
-		weekday: "long",
-	});
-	const intlDateObjDate = new Intl.DateTimeFormat("en-US", {
-		timeZone: $timezone,
-		month: "long",
-		day: "numeric",
-		year: "numeric",
-	});
-	const intlDateObjTime = new Intl.DateTimeFormat("en-US", {
-		timeZone: $timezone,
-		hour: "numeric",
-		minute: "2-digit",
-		hour12: true,
-	});
-	const weekdayParts = intlDateObjWeekday.formatToParts(date);
-	const dayName =
-		weekdayParts.find((part) => part.type === "weekday")?.value ?? "Unknown";
-	const datePart = intlDateObjDate.format(date);
-	const timePart = intlDateObjTime.format(date);
-	return { dayName, datePart, timePart };
-}
-
 type FormattedEventDate = {
 	date: string;
 	time: string;
@@ -253,12 +228,13 @@ export const definition: RecipeDefinition<
 		return data as z.infer<typeof dataSchema>;
 	},
 
-	Component: ({ width, height, data, params }) => (
+	Component: ({ width, height, data, params, screen }) => (
 		<UpcomingCalendarEvents
 			{...data}
 			params={params}
 			width={width}
 			height={height}
+			screen={screen}
 		/>
 	),
 };

@@ -80,12 +80,13 @@ export async function renderRecipeToImage({
 	$timezone,
 }: RenderRecipeArgs): Promise<RasterizeResults> {
 	// React path
-	/*
-	console.log({
-		where: "renderRecipeToImage",
+	console.log("renderRecipeToImage", {
+		imageWidth,
+		imageHeight,
+		model,
+		paletteId,
 		$timezone,
 	});
-	*/
 	const resolved = await resolveReactRecipe(slug, $timezone, userId);
 	if (resolved) {
 		const { definition, params, data } = resolved;
@@ -94,6 +95,14 @@ export async function renderRecipeToImage({
 			height: imageHeight,
 			model,
 			palette,
+		});
+		console.log("renderRecipeToImage 2", {
+			imageWidth,
+			imageHeight,
+			model,
+			paletteId,
+			screen,
+			$timezone,
 		});
 		const element = createElement(definition.Component, {
 			width: screen.logicalWidth,

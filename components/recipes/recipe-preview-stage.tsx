@@ -3,7 +3,14 @@
 import { Monitor, Smartphone } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { DeviceFrame } from "@/components/common/device-frame";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,6 +21,10 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+	ResolvePreviewImageUrlParameters,
+	ResolvePreviewImageUrlType,
+} from "@/lib/recipes/render/types";
 import { buildDeviceImageParameters } from "@/lib/render/device-image-url";
 import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import { FormatValue } from "@/lib/types";
@@ -70,6 +81,7 @@ interface RecipePreviewStageProps {
 	 * recipes: `/recipes/.../preview` only exists for React components).
 	 */
 	simulateReactPreviewInIframe?: boolean;
+	getPreviewImageUrl: ResolvePreviewImageUrlType;
 }
 
 const FORMAT_LABELS: Record<FormatValue, string> = {
@@ -88,7 +100,9 @@ export function RecipePreviewStage({
 	trmnlModels,
 	trmnlPalettes,
 	simulateReactPreviewInIframe = true,
+	getPreviewImageUrl,
 }: RecipePreviewStageProps) {
+	const [imageUrl, setImageUrl] = useState<string | null>();
 	const router = useRouter();
 	const reactFrameRef = useRef<HTMLDivElement>(null);
 	const [reactFrameSize, setReactFrameSize] = useState({ width: 0, height: 0 });
@@ -181,6 +195,7 @@ export function RecipePreviewStage({
 			? `${simWidth} / ${simHeight}`
 			: undefined;
 
+	/*
 	const devicePreviewSrc =
 		deviceSimActive &&
 		selectedModel != null &&
@@ -200,7 +215,7 @@ export function RecipePreviewStage({
 					return `/api/bitmap/${slug}.${ext}?${params.toString()}`;
 				})()
 			: null;
-
+*/
 	const reactPreviewSrc =
 		deviceSimActive &&
 		selectedModel != null &&
@@ -226,6 +241,24 @@ export function RecipePreviewStage({
 					reactFrameSize.height / simHeight,
 				)
 			: 1;
+
+	const fetchImageUrl = useCallback(
+		async (values: ResolvePreviewImageUrlParameters) => {
+			const url = await getPreviewImageUrl(values);
+			console.log("fetchImageUrl", { url, values });
+			setImageUrl(url);
+		},
+		[getPreviewImageUrl],
+	);
+
+	useEffect(() => {
+		fetchImageUrl({
+			screenId: slug,
+			modelName,
+			paletteId: null, // TODO
+			orientation: isPortrait ? "portrait" : "landscape",
+		});
+	}, [fetchImageUrl, modelName, slug, isPortrait]);
 
 	useEffect(() => {
 		if (activeKey !== "react" || !reactPreviewSrc) return;
@@ -277,13 +310,13 @@ export function RecipePreviewStage({
 		}
 		if (
 			(activeKey === FormatValue.bmp || activeKey === FormatValue.png) &&
-			devicePreviewSrc
+			imageUrl
 		) {
 			return (
 				<Image
 					width={simWidth}
 					height={simHeight}
-					src={devicePreviewSrc}
+					src={imageUrl}
 					unoptimized
 					style={{ imageRendering: "pixelated" }}
 					alt={`${selectedModel.label} ${FORMAT_LABELS[activeKey]} preview`}
@@ -295,6 +328,7 @@ export function RecipePreviewStage({
 		if (activeKey === FormatValue.react && reactPreviewSrc) {
 			return (
 				<div ref={reactFrameRef} className="absolute inset-0 overflow-hidden">
+					<div>{imageUrl}</div>
 					<iframe
 						title={`${selectedModel.label} recipe preview`}
 						src={reactPreviewSrc}

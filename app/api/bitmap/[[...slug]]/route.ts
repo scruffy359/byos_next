@@ -1,6 +1,11 @@
-import type { NextRequest } from "next/server";
+import { connection, type NextRequest } from "next/server";
 import { cache } from "react";
-import { getCurrentUserId } from "@/lib/auth/get-user";
+import { fetchDeviceByApiKey } from "@/app/actions/device";
+import {
+	BitmapAssociationType,
+	BitmapAssociationValues,
+	getBitmapAssociatedCacheEntry,
+} from "@/cache-handlers/bitmap-association-cache-handler";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 import {
@@ -19,48 +24,73 @@ import {
 	rejectOversizedImageArea,
 } from "@/lib/render/image-request";
 import {
+	DEFAULT_MODEL_NAME,
 	type DeviceProfile,
 	getDeviceProfile,
 } from "@/lib/trmnl/device-profile";
 import { FormatValue } from "@/lib/types";
 import { localTimezone } from "@/lib/utils";
-import {
-	parseRequestHeaders,
-	type RequestHeaders,
-	resolveUserIdFromApiKey,
-} from "../../display/utils";
 
 export async function GET(
 	req: NextRequest,
 	{ params }: { params: Promise<{ slug?: string[] }> },
 ) {
-	const headers = parseRequestHeaders(req);
+	await connection();
 	try {
 		// Always await params as required by Next.js 14/15
+		// TODO: handle error scenarios.
 		const { slug = ["error"] } = await params;
 		const bitmapPath = Array.isArray(slug) ? slug.join("/") : slug;
-		const recipeSlug = stripImageExtension(bitmapPath);
+		const recipeAssociationSlug = stripImageExtension(bitmapPath);
+		const splitDots = recipeAssociationSlug.split(".");
+		const associationId = splitDots[splitDots.length - 1];
+		let recipeSlug = splitDots.slice(0, -1).join(".");
 
 		const { searchParams } = new URL(req.url);
 		const imageRequest = parseImageRequest(searchParams);
 		if (imageRequest instanceof Response) return imageRequest;
 
+		const associatedValues = await getBitmapAssociatedCacheEntry(associationId);
+
+		console.log("GET /api/bitmap", {
+			recipeSlug,
+			associationId,
+			associatedValues,
+		});
+
+		if (associatedValues === null) {
+			throw new Error(`No data associated with ID: ${associationId}`);
+		}
+
+		const {
+			screenId,
+			type: associationType,
+			device: associationDevice,
+		} = associatedValues;
+
 		logger.info(
-			`Bitmap request for: ${bitmapPath} with ${imageRequest.grayscaleLevels} gray levels`,
+			`Bitmap request for: '${bitmapPath}', screen '${screenId}' with ${imageRequest.grayscaleLevels} gray levels`,
 		);
 
-		// Resolve the device owner so DB queries are scoped to the right user
-		const userId = headers.apiKey
-			? await resolveUserIdFromApiKey(headers.apiKey)
-			: // TODO: only set user when we know UI user
-				await getCurrentUserId();
+		if (
+			associationType === BitmapAssociationType.display &&
+			!associationDevice
+		) {
+		}
+
+		recipeSlug = screenId;
+
+		// Resolve the device owner so recipe parameters are scoped to proper user.
+		const resolvedData = await resolveAssociationData(associatedValues);
+		if (!resolvedData) {
+			throw new Error("Required data could not be resolved");
+		}
+		const { userId, internalValues } = resolvedData;
 
 		// Forward cookies so browser rendering can reuse the caller's auth session.
-		const cookieHeader = req.headers.get("cookie");
-		const profile = await resolveDeviceProfileForRequest(headers, {
-			modelName: imageRequest.modelName,
-			paletteId: imageRequest.paletteId,
-		});
+		const cookieHeader = req.headers.get("cookie"); // TODO: is this needed? as cookies aren't really TRMNL
+
+		const profile = await resolveDeviceProfileForRequest(associatedValues);
 
 		if (recipeSlug === "error") {
 			const imageWidth = imageRequest.width ?? profile.model.width;
@@ -82,17 +112,26 @@ export async function GET(
 		// Profile + extension are both pinned by the URL (model and palette_id
 		// are query params), so dispatch on profile MIME alone.
 		if (profile.model.mime_type !== "image/bmp") {
-			const imageWidth = imageRequest.width ?? profile.model.width;
-			const imageHeight = imageRequest.height ?? profile.model.height;
+			const imageWidth = profile.model.width;
+			const imageHeight = profile.model.height;
 			const oversized = rejectOversizedImageArea(imageWidth, imageHeight);
 			if (oversized) return oversized;
+			console.log({
+				slug: recipeSlug,
+				profile,
+				width: imageWidth,
+				height: imageHeight,
+				userId,
+				$timezone: internalValues.$timezone,
+				cookies: cookieHeader || undefined,
+			});
 			const image = await renderRecipeForDevice({
 				slug: recipeSlug,
 				profile,
 				width: imageWidth,
 				height: imageHeight,
 				userId,
-				$timezone: imageRequest.$timezone ?? localTimezone(),
+				$timezone: internalValues.$timezone,
 				cookies: cookieHeader || undefined,
 			});
 
@@ -128,7 +167,7 @@ export async function GET(
 			imageRequest.grayscaleLevels,
 			profile,
 			userId,
-			imageRequest.$timezone ?? localTimezone(),
+			internalValues.$timezone,
 			cookieHeader || undefined,
 		);
 
@@ -169,12 +208,7 @@ export async function GET(
 				? DEFAULT_IMAGE_HEIGHT
 				: (imageRequest.height ?? DEFAULT_IMAGE_HEIGHT);
 		const profile =
-			imageRequest instanceof Response
-				? null
-				: await resolveProfileOrNull(headers, {
-						modelName: imageRequest.modelName,
-						paletteId: imageRequest.paletteId,
-					});
+			imageRequest instanceof Response ? null : await resolveProfileForError();
 		const errorImage = await renderErrorImage({
 			message: error instanceof Error ? error.message : "Image render failed",
 			width,
@@ -192,37 +226,42 @@ export async function GET(
 	}
 }
 
-async function resolveProfileOrNull(
-	headers: RequestHeaders,
-	query: { modelName?: string | null; paletteId?: string | null },
-): Promise<DeviceProfile | null> {
-	try {
-		return await resolveDeviceProfileForRequest(headers, query);
-	} catch {
-		return null;
-	}
-}
+const resolveProfileForError = async () => {
+	return await getDeviceProfile(DEFAULT_MODEL_NAME, null);
+};
 
 async function resolveDeviceProfileForRequest(
-	headers: RequestHeaders,
-	query: { modelName?: string | null; paletteId?: string | null } = {},
+	associationValues: BitmapAssociationValues,
 ): Promise<DeviceProfile> {
-	let modelName = query.modelName || headers.model;
-	let paletteId: string | null = query.paletteId || null;
+	const { type: associationType } = associationValues;
 
-	if (headers.apiKey && !query.modelName) {
+	if (associationType === BitmapAssociationType.display) {
+		if (!associationValues.device) {
+			throw Error("Bitmap association for 'device' missing data.");
+		}
+
+		const { apiKey } = associationValues.device;
 		const { ready } = await checkDbConnection();
 		if (ready) {
 			const device = await db
 				.selectFrom("devices")
 				.select(["model", "palette_id"])
-				.where("api_key", "=", headers.apiKey)
+				.where("api_key", "=", apiKey)
 				.executeTakeFirst();
 
-			modelName = device?.model ?? modelName;
-			paletteId = device?.palette_id ?? null;
+			const modelName = device?.model ?? DEFAULT_MODEL_NAME;
+			const paletteId = device?.palette_id ?? null;
+
+			return getDeviceProfile(modelName, paletteId);
 		}
+		throw new Error("Bitmap device/profile could not be determined.");
+	} // preview
+
+	if (!associationValues.preview) {
+		throw Error("Bitmap association for 'preview' missing data.");
 	}
+
+	const { modelName, paletteId } = associationValues.preview;
 
 	return getDeviceProfile(modelName, paletteId);
 }
@@ -233,9 +272,6 @@ function getImageResponseHeaders(image: {
 	size_limit_exceeded?: boolean;
 }) {
 	return {
-		"Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-		Pragma: "no-cache",
-		Expires: "0",
 		"Content-Type": image.mime_type,
 		"Content-Length": image.buffer.length.toString(),
 		...(image.size_limit_exceeded
@@ -272,3 +308,44 @@ const renderRecipeBitmap = cache(
 		return renders.bitmap ?? Buffer.from([]);
 	},
 );
+
+async function resolveAssociationData(
+	associatedValues: BitmapAssociationValues,
+) {
+	const {
+		type: associationType,
+		device: associationDevice,
+		preview,
+	} = associatedValues;
+
+	if (associationType === BitmapAssociationType.display) {
+		if (!associationDevice) {
+			throw new Error("Bitmap association entry missing 'device'");
+		}
+
+		const device = await fetchDeviceByApiKey(associationDevice.apiKey);
+
+		if (!device) {
+			return null;
+		}
+
+		return {
+			userId: device.user_id,
+			internalValues: {
+				$timezone: device.timezone,
+			},
+		};
+	}
+
+	// preview path
+	if (!preview) {
+		throw new Error("Bitmap association entry missing 'preview'");
+	}
+
+	return {
+		userId: preview.userId,
+		internalValues: {
+			$timezone: localTimezone(),
+		},
+	};
+}
