@@ -63,7 +63,6 @@ export async function renderWithBrowser(
 		model: options.model ?? null,
 		grayscale: null, // TODO: not an option on this method
 		paletteId: options.paletteId ?? null,
-		$timezone: options.$timezone,
 	});
 
 	if (options.userId) {

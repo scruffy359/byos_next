@@ -5,7 +5,7 @@ import {
 	createRenderAssociationValuesForDevice,
 	RenderAssociationType,
 	setRenderAssociationCacheEntry,
-} from "@/cache-handlers/bitmap-association-cache-handler";
+} from "@/cache-handlers/render-association-cache-handler";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { isNoDbMode } from "@/lib/database/utils";

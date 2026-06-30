@@ -19,6 +19,10 @@ export type RefreshSchedule = {
 	time_ranges: TimeRange[]; // Array of time ranges with specific refresh rates
 };
 
+/*
+ * Note: Device "id" field in PostgreSQL is defined as BIGSERIAL. In Kysely, a PostgreSQL
+ * bigint column mapped to a TypeScript number will still be returned as a string
+ * by the pg driver unless you configure the driver to parse it as a number using pg-types. */
 export type Device = {
 	id: number;
 	name: string;

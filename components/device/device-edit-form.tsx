@@ -187,7 +187,6 @@ export default function DeviceEditForm({
 		grayscale: grayscaleLevels,
 		model: selectedModel?.name ?? null,
 		paletteId: selectedPalette?.id ?? null,
-		$timezone: editedDevice.timezone,
 	});
 
 	const isMixup =

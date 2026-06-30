@@ -12,7 +12,6 @@ import {
 } from "@/lib/trmnl/device-profile";
 import { type GrayscaleLevel, normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import type { Device } from "@/lib/types";
-import { configuredTimezone } from "../utils";
 
 /**
  * Single source of truth for "what should this device display?".
@@ -28,7 +27,7 @@ import { configuredTimezone } from "../utils";
 
 type RequestHints = {
 	hostUrl: string;
-	bitmapAssociationId: string;
+	renderAssociationId: string;
 	width?: number | null;
 	height?: number | null;
 	base64?: boolean;
@@ -69,7 +68,6 @@ export async function selectDisplayForDevice(
 	const width = hints.width || dimensions.width;
 	const height = hints.height || dimensions.height;
 	const grayscaleLevels = normalizeGrayscale(device.grayscale);
-	const timezone = device?.timezone ?? configuredTimezone();
 
 	const { screen } = device;
 
@@ -89,7 +87,6 @@ export async function selectDisplayForDevice(
 		grayscale: grayscaleLevels,
 		model: profile.model.name,
 		paletteId: profile.palette?.id ?? null,
-		$timezone: timezone,
 	});
 	const baseQueryParams = params.toString();
 
@@ -103,7 +100,7 @@ export async function selectDisplayForDevice(
 
 	const imageUrlAssociated = buildDeviceImageUrl({
 		baseUrl: `${hints.hostUrl}/api/bitmap`,
-		imagePath: hints.bitmapAssociationId,
+		imagePath: hints.renderAssociationId,
 		profile,
 	});
 

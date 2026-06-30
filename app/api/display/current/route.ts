@@ -8,6 +8,7 @@ import {
 import { selectDisplayForDevice } from "@/lib/display/select";
 import { logError, logInfo } from "@/lib/logger";
 import { buildDeviceImageFilename } from "@/lib/render/device-image-url";
+import { getCurrentScreenAssociation } from "@/lib/render/render-association";
 import type { Device } from "@/lib/types";
 import { parseRequestHeaders, resolveUserIdFromApiKey } from "../utils";
 
@@ -63,10 +64,17 @@ export async function GET(request: Request) {
 			);
 		}
 
-		// TODO: fix
+		// TODO: fix; get current screen
+		// TODO: fix type issue needing to cast as "unknown".
+		const associationValues = await getCurrentScreenAssociation(
+			device as unknown as Device,
+		);
+
 		const deviceData = device as unknown as Device;
+
 		const selection = await selectDisplayForDevice(deviceData, {
 			hostUrl: headers.hostUrl,
+			renderAssociationId: associationValues.associationId,
 			width: headers.width,
 			height: headers.height,
 		});

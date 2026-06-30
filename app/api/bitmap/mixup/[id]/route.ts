@@ -5,7 +5,7 @@ import {
 	RenderAssociationType,
 	resolveAssociationData,
 	resolveDeviceProfile,
-} from "@/cache-handlers/bitmap-association-cache-handler";
+} from "@/cache-handlers/render-association-cache-handler";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { getLayoutById, type LayoutSlot } from "@/lib/mixup/constants";

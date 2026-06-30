@@ -82,7 +82,6 @@ type DeviceRenderOptions = {
 	width: number;
 	height: number;
 	grayscale: number | null;
-	$timezone: string | null;
 	model: string | null;
 	paletteId: string | null;
 };
@@ -94,7 +93,6 @@ export function buildDeviceImageParameters({
 	width,
 	height,
 	grayscale,
-	$timezone,
 	model,
 	paletteId,
 }: DeviceRenderOptions) {
@@ -109,9 +107,6 @@ export function buildDeviceImageParameters({
 	}
 	if (paletteId) {
 		params.set("palette_id", paletteId);
-	}
-	if ($timezone) {
-		params.set("$timezone", $timezone);
 	}
 	// TODO: base64?
 	// if (hints.base64) {

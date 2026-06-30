@@ -125,7 +125,6 @@ export default function DeviceView({
 	const fetchScreenUrls = useCallback(
 		async (values: FunctionGetPreviewScreenArgs) => {
 			const urls = await getScreenUrls(values);
-			console.log({ urls });
 			setScreenUrls(urls);
 		},
 		[getScreenUrls],
@@ -158,7 +157,7 @@ export default function DeviceView({
 	}, [device.firmware_version]);
 
 	const orientation = device.screen_orientation ?? "landscape";
-	const isPortrait = device.screen_orientation === "portrait";
+	const isPortrait = orientation === "portrait";
 	const deviceWidth = isPortrait
 		? device.screen_height || DEFAULT_IMAGE_HEIGHT
 		: device.screen_width || DEFAULT_IMAGE_WIDTH;
@@ -184,10 +183,7 @@ export default function DeviceView({
 		? estimateBatteryLife(device.battery_voltage, refreshPerDay)
 		: null;
 
-	const isPlaylist =
-		device.display_mode === DeviceDisplayMode.PLAYLIST &&
-		device.playlist_id &&
-		playlistScreens.length > 0;
+	const isPlaylist = device.display_mode === DeviceDisplayMode.PLAYLIST;
 
 	useEffect(() => {
 		fetchScreenUrls({

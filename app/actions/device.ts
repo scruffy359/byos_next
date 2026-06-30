@@ -269,7 +269,7 @@ export async function fetchDeviceLogsWithFilters({
  * Update a device
  */
 export async function updateDevice(
-	device: Partial<Device> & { id: number },
+	device: Partial<Device>,
 ): Promise<{ success: boolean; error?: string }> {
 	const { ready } = await checkDbConnection();
 

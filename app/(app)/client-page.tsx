@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RenderAssociationValues } from "@/cache-handlers/bitmap-association-cache-handler";
+import { RenderAssociationValues } from "@/cache-handlers/render-association-cache-handler";
 import { DeviceFrame } from "@/components/common/device-frame";
 import { StatusIndicator } from "@/components/common/status-indicator";
 import { Badge } from "@/components/ui/badge";

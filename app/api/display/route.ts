@@ -4,7 +4,7 @@ import {
 	RenderAssociationValues,
 	setCurrentScreenCacheEntry,
 	setRenderAssociationCacheEntry,
-} from "@/cache-handlers/bitmap-association-cache-handler";
+} from "@/cache-handlers/render-association-cache-handler";
 import { db } from "@/lib/database/db";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
@@ -88,7 +88,7 @@ export async function GET(request: Request) {
 
 		const selection = await selectDisplayForDevice(device, {
 			hostUrl: headers.hostUrl,
-			bitmapAssociationId: uniqueId,
+			renderAssociationId: uniqueId,
 			width: headers.width,
 			height: headers.height,
 			base64: headers.base64,

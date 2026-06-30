@@ -5,7 +5,7 @@ import {
 	RenderAssociationType,
 	resolveAssociationData,
 	resolveDeviceProfile,
-} from "@/cache-handlers/bitmap-association-cache-handler";
+} from "@/cache-handlers/render-association-cache-handler";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,

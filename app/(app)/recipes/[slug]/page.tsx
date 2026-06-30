@@ -11,7 +11,7 @@ import {
 	createRenderAssociationValuesForSettings,
 	RenderAssociationType,
 	setRenderAssociationCacheEntry,
-} from "@/cache-handlers/bitmap-association-cache-handler";
+} from "@/cache-handlers/render-association-cache-handler";
 import { PageTemplate } from "@/components/common/page-template";
 import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
 import { RecipePreviewStage } from "@/components/recipes/recipe-preview-stage";

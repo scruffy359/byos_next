@@ -11,7 +11,7 @@
 		"screenshots": "node scripts/take-screenshots.mjs",
 		"generate:schema:diagram": "npx -p @mermaid-js/mermaid-cli mmdc -i docs/schema.mmd -o docs/schema.svg",
 		"generate:sql": "node scripts/generate-sql-statements.js && pnpm format",
-		"generate:types": "kysely-codegen --dialect postgres --include-pattern='public.*' --out-file lib/database/db.d.ts",
+		"generate:types": "kysely-codegen --dialect postgres --include-pattern='public.*' --out-file lib/database/db.d.ts && biome format --write lib/database/db.d.ts",
 		"generate:types:trmnl": "openapi-typescript lib/trmnl/openapi.yaml -o lib/trmnl/types.gen.ts && biome format --write lib/trmnl/types.gen.ts",
 		"generate:recipes": "node scripts/generate-recipes-index.mjs && biome format --write lib/recipes/screens.generated.ts",
 		"prebuild": "pnpm generate:sql && pnpm generate:recipes",
