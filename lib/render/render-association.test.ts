@@ -139,8 +139,18 @@ function makeAssociationValues(
 }
 
 // ---------------------------------------------------------------------------
-// Global reset
+// Global setup
 // ---------------------------------------------------------------------------
+
+beforeAll(() => {
+	jest.spyOn(console, "log").mockImplementation(() => {});
+	jest.spyOn(console, "warn").mockImplementation(() => {});
+	jest.spyOn(console, "error").mockImplementation(() => {});
+});
+
+afterAll(() => {
+	jest.restoreAllMocks();
+});
 
 beforeEach(() => {
 	jest.clearAllMocks();
@@ -451,9 +461,9 @@ describe("resolveAssociationData — recipePreview type", () => {
 		});
 		const result = await resolveAssociationData(values);
 		expect(result).not.toBeNull();
-		expect(result!.userId).toBe("user-abc");
-		expect(result!.device.user_id).toBe("user-abc");
-		expect(result!.device.name).toBe("PseudoPreviewDevice");
+		expect(result?.userId).toBe("user-abc");
+		expect(result?.device.user_id).toBe("user-abc");
+		expect(result?.device.name).toBe("PseudoPreviewDevice");
 	});
 
 	it("uses configuredTimezone() for internalValues.$timezone", async () => {
@@ -463,7 +473,7 @@ describe("resolveAssociationData — recipePreview type", () => {
 				recipePreview: { userId: "u1" },
 			}),
 		);
-		expect(result!.internalValues.$timezone).toBe("Europe/London");
+		expect(result?.internalValues.$timezone).toBe("Europe/London");
 	});
 
 	it("throws when preview object is missing", async () => {
@@ -543,9 +553,9 @@ describe("resolveAssociationData — display type", () => {
 			makeAssociationValues({ type: RenderAssociationType.display }),
 		);
 		expect(result).not.toBeNull();
-		expect(result!.userId).toBe("db-user");
-		expect(result!.device).toBe(mockDevice);
-		expect(result!.internalValues.$timezone).toBe("Asia/Tokyo");
+		expect(result?.userId).toBe("db-user");
+		expect(result?.device).toBe(mockDevice);
+		expect(result?.internalValues.$timezone).toBe("Asia/Tokyo");
 	});
 });
 
