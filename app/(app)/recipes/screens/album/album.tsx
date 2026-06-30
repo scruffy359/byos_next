@@ -8,13 +8,13 @@ import {
 	createScreenProfile,
 	type ScreenProfile,
 } from "@/lib/trmnl/screen-profile";
-import { localTimezone } from "@/lib/utils";
+import { configuredTimezone } from "@/lib/utils";
 import { PreSatori } from "@/utils/pre-satori";
 
 const DEFAULT_IMAGE_URL = "https://byos-nextjs.vercel.app/album/london.png";
 
 export const paramsSchema = z.object({
-	$timezone: z.string().default(localTimezone()),
+	$timezone: z.string().default(configuredTimezone()),
 	imageUrl: z
 		.url()
 		.default(DEFAULT_IMAGE_URL)

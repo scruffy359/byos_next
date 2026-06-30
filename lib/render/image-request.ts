@@ -1,5 +1,5 @@
 import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
-import { localTimezone } from "../utils";
+import { configuredTimezone } from "../utils";
 
 export const MAX_IMAGE_DIMENSION = 4096;
 export const MAX_IMAGE_PIXELS = 6_000_000;
@@ -68,6 +68,7 @@ export function rejectOversizedImageArea(
 	return validationError(`image area must be <= ${MAX_IMAGE_PIXELS} pixels`);
 }
 
+/** TODO @deprecated No longer needed under Render Cache */
 export function parseImageRequest(
 	searchParams: URLSearchParams,
 	defaults: { width?: number; height?: number } = {},
@@ -88,7 +89,7 @@ export function parseImageRequest(
 		const oversized = rejectOversizedImageArea(width.value, height.value);
 		if (oversized) return oversized;
 	}
-	const $timezone = searchParams.get("$timezone") ?? localTimezone();
+	const $timezone = searchParams.get("$timezone") ?? configuredTimezone();
 
 	const grayscale = parseGrayscale(searchParams.get("grayscale"));
 	if (!grayscale.ok) return grayscale.response;

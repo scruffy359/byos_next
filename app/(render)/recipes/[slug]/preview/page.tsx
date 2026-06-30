@@ -24,7 +24,7 @@ import {
 } from "@/lib/trmnl/model-css";
 import { createScreenProfile } from "@/lib/trmnl/screen-profile";
 import { FormatValue } from "@/lib/types";
-import { localTimezone } from "@/lib/utils";
+import { configuredTimezone } from "@/lib/utils";
 
 const fetchLiquidRecipeMeta = cache(async (slug: string) => {
 	const { ready } = await checkDbConnection();
@@ -155,7 +155,7 @@ export default async function RecipePreviewPage({
 
 	const resolved = await resolveReactRecipe(
 		slug,
-		$timezoneParam ?? localTimezone(),
+		$timezoneParam ?? configuredTimezone(),
 		userId,
 	);
 	const className = getTrmnlModelClassName(profile?.model);

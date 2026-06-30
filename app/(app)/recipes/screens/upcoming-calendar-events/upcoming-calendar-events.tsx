@@ -5,7 +5,7 @@ import {
 } from "@/lib/recipes/constants";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import { createScreenProfile, ScreenProfile } from "@/lib/trmnl/screen-profile";
-import { localTimezone } from "@/lib/utils";
+import { configuredTimezone } from "@/lib/utils";
 import { PreSatori } from "@/utils/pre-satori";
 import getUpcomingCalendarEventsData, {
 	ResponseStatus,
@@ -22,7 +22,7 @@ export const paramsSchema = z.object({
 	caldavApiKeySecret: z.string().nonempty(),
 	calendarName: z.string().nonempty().default("TRMNL"),
 	eventCountToDisplay: z.int().default(3),
-	$timezone: z.string().default(localTimezone()),
+	$timezone: z.string().default(configuredTimezone()),
 });
 
 export const dataSchema = z.object({
@@ -150,7 +150,7 @@ export default function UpcomingCalendarEvents({
 							displayEvents?.map((event, index) => {
 								const formattedDate = formatEventDate(
 									event.start,
-									event.startTzid || localTimezone(),
+									event.startTzid || configuredTimezone(),
 								);
 								return (
 									<div key={index}>

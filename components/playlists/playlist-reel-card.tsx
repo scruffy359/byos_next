@@ -80,6 +80,7 @@ export function PlaylistReelCard({
 									aspectRatio: `${DEFAULT_IMAGE_WIDTH} / ${DEFAULT_IMAGE_HEIGHT}`,
 								}}
 							>
+								{/* TODO: Render Cache */}
 								<picture>
 									<source
 										srcSet={`/api/bitmap/${item.screen_id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}

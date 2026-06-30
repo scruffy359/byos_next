@@ -20,7 +20,7 @@ import {
 	buildDeviceImageFilename,
 	buildDeviceImageUrl,
 } from "@/lib/render/device-image-url";
-import { localTimezone } from "@/lib/utils";
+import { configuredTimezone } from "@/lib/utils";
 import {
 	buildClaimResponse,
 	buildDisplayResponse,
@@ -34,12 +34,6 @@ import {
 } from "./utils";
 
 export const DEFAULT_REFRESH_RATE = DISPLAY_FALLBACK_REFRESH_SECONDS;
-
-function errorImageQuery(baseQueryParams: string, message: string): string {
-	const params = new URLSearchParams(baseQueryParams);
-	params.set("message", message);
-	return params.toString();
-}
 
 export async function GET(request: Request) {
 	const headers = parseRequestHeaders(request);
@@ -90,7 +84,7 @@ export async function GET(request: Request) {
 			});
 			return buildErrorResponse("Device not found", baseUrl, uniqueId);
 		}
-		const timezone = device.timezone || localTimezone();
+		const timezone = device.timezone || configuredTimezone();
 
 		const selection = await selectDisplayForDevice(device, {
 			hostUrl: headers.hostUrl,
@@ -100,10 +94,14 @@ export async function GET(request: Request) {
 			base64: headers.base64,
 		});
 
+		let errorMessage: string | null = null;
+
 		let { screen: screenToDisplay, imageUrlAssociated: imageUrl } = selection;
 		let dynamicRefreshRate: number;
 
-		switch (device.display_mode) {
+		const { display_mode: displayMode, mixup_id: mixupId } = device;
+
+		switch (displayMode) {
 			case DeviceDisplayMode.PLAYLIST: {
 				if (device.playlist_id) {
 					const activeItem = await getActivePlaylistItem(
@@ -133,28 +131,34 @@ export async function GET(request: Request) {
 							metadata: { deviceId: device.friendly_id },
 						});
 						screenToDisplay = "error";
+						errorMessage = "No active playlist item";
+						/*
 						imageUrl = buildDeviceImageUrl({
 							baseUrl,
 							imagePath: "error",
 							profile: selection.profile,
+							/*
 							query: errorImageQuery(
 								selection.baseQueryParams,
 								"No active playlist item",
-							),
-						});
+							),*/ /*
+						});*/
 						dynamicRefreshRate = DEFAULT_REFRESH_RATE;
 					}
 				} else {
 					screenToDisplay = "error";
+					errorMessage = "Playlist mode needs a playlist";
+					/*
 					imageUrl = buildDeviceImageUrl({
 						baseUrl,
 						imagePath: "error",
 						profile: selection.profile,
+						/*
 						query: errorImageQuery(
 							selection.baseQueryParams,
 							"Playlist mode needs a playlist",
-						),
-					});
+						),*/ /*
+					});*/
 					dynamicRefreshRate = DEFAULT_REFRESH_RATE;
 				}
 				/* not needed?
@@ -170,27 +174,31 @@ export async function GET(request: Request) {
 			}
 
 			case DeviceDisplayMode.MIXUP:
-				if (device.mixup_id) {
+				if (mixupId) {
+					// override computed imageUrl for mixup
+					const mixupPath = `mixup/${mixupId}`;
+					screenToDisplay = mixupPath;
 					imageUrl = buildDeviceImageUrl({
 						baseUrl,
-						imagePath: `mixup/${device.mixup_id}`,
+						imagePath: `mixup/${getNewAssociationId()}`,
 						profile: selection.profile,
+						/* TODO
 						query: `${selection.baseQueryParams}&access_token=${encodeURIComponent(
 							headers.apiKey,
-						)}`,
+						)}`,*/
 					});
 					logInfo("Using mixup display mode", {
 						source: "api/display",
 						metadata: {
 							deviceId: device.friendly_id,
-							mixupId: device.mixup_id,
+							mixupId,
 						},
 					});
 				}
 				dynamicRefreshRate = calculateRefreshRate(
 					normalizeRefreshSchedule(device.refresh_schedule),
 					DEFAULT_REFRESH_RATE,
-					device.timezone || "UTC",
+					device.timezone || configuredTimezone(),
 				);
 				break;
 
@@ -198,7 +206,7 @@ export async function GET(request: Request) {
 				dynamicRefreshRate = calculateRefreshRate(
 					normalizeRefreshSchedule(device.refresh_schedule),
 					DEFAULT_REFRESH_RATE,
-					device.timezone || "UTC",
+					device.timezone || configuredTimezone(),
 				);
 				break;
 		}
@@ -219,7 +227,11 @@ export async function GET(request: Request) {
 				id: device.id,
 				apiKey: device.api_key,
 			},
-			dataParams: null,
+			dataParams: errorMessage
+				? {
+						errorMessage,
+					}
+				: null,
 		};
 
 		// associate the uniqueId with screen and device

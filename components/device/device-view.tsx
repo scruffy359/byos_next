@@ -3,7 +3,7 @@
 import { ExternalLink } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { DeviceFrame } from "@/components/common/device-frame";
 import { StatusIndicator } from "@/components/common/status-indicator";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,10 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { buildDeviceImageParameters } from "@/lib/render/device-image-url";
+import {
+	FunctionGetPreviewScreenArgs,
+	FunctionGetPreviewScreenUrls,
+} from "@/lib/recipes/render/types";
 import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
 import type { Device } from "@/lib/types";
@@ -40,9 +43,9 @@ const getSignalQuality = (rssi: number): string => {
 	return "Very Poor";
 };
 
-const calculateRefreshPerDay = (
-	deviceData: Device & { status?: string; type?: string },
-): number => {
+export type DeviceWithState = Device & { status?: string; type?: string };
+
+const calculateRefreshPerDay = (deviceData: DeviceWithState): number => {
 	if (!deviceData?.refresh_schedule) return 0;
 	const defaultRefreshRate =
 		deviceData.refresh_schedule.default_refresh_rate ||
@@ -69,10 +72,11 @@ const calculateRefreshPerDay = (
 };
 
 interface DeviceViewProps {
-	device: Device & { status?: string; type?: string };
+	device: DeviceWithState;
 	playlistScreens: { screen: string; duration: number }[];
 	trmnlModels: TrmnlModel[];
 	trmnlPalettes: TrmnlPalette[];
+	getScreenUrls: FunctionGetPreviewScreenUrls;
 }
 
 function PanelHeader({
@@ -113,10 +117,20 @@ function MetaPair({
 
 export default function DeviceView({
 	device,
+	getScreenUrls,
 	playlistScreens,
 	trmnlModels,
 	trmnlPalettes,
 }: DeviceViewProps) {
+	const fetchScreenUrls = useCallback(
+		async (values: FunctionGetPreviewScreenArgs) => {
+			const urls = await getScreenUrls(values);
+			console.log({ urls });
+			setScreenUrls(urls);
+		},
+		[getScreenUrls],
+	);
+	const [screenUrls, setScreenUrls] = useState<string[] | null>(null);
 	const [firmwareInfo, setFirmwareInfo] = useState<FirmwareInfo | null>(null);
 
 	useEffect(() => {
@@ -143,6 +157,7 @@ export default function DeviceView({
 		fetchLatestFirmware();
 	}, [device.firmware_version]);
 
+	const orientation = device.screen_orientation ?? "landscape";
 	const isPortrait = device.screen_orientation === "portrait";
 	const deviceWidth = isPortrait
 		? device.screen_height || DEFAULT_IMAGE_HEIGHT
@@ -160,23 +175,7 @@ export default function DeviceView({
 		trmnlPalettes.find(
 			(palette) => palette.id === selectedModel?.palette_ids[0],
 		);
-	const imageExtension = getModelImageExtension(selectedModel);
 	const screenAspectRatio = `${deviceWidth} / ${deviceHeight}`;
-	const deviceImageParams = buildDeviceImageParameters({
-		width: deviceWidth,
-		height: deviceHeight,
-		grayscale: grayscaleLevels,
-		model: selectedModel?.name,
-		paletteId: selectedPalette?.id ?? null,
-		$timezone: device.timezone,
-	});
-
-	const urlQuery = deviceImageParams.toString();
-	const errorImageSrc = (message: string) => {
-		const params = new URLSearchParams(deviceImageParams);
-		params.set("message", message);
-		return `/api/bitmap/error.${imageExtension}?${params}`;
-	};
 
 	const status: "online" | "offline" =
 		device.status === "online" ? "online" : "offline";
@@ -189,17 +188,29 @@ export default function DeviceView({
 		device.display_mode === DeviceDisplayMode.PLAYLIST &&
 		device.playlist_id &&
 		playlistScreens.length > 0;
-	const isMixup =
-		device.display_mode === DeviceDisplayMode.MIXUP && device.mixup_id;
-	const heroSrc = isPlaylist
-		? playlistScreens[0].screen
-			? `/api/bitmap/${playlistScreens[0].screen}.${imageExtension}?${urlQuery}`
-			: errorImageSrc("Playlist item has no screen")
-		: isMixup
-			? `/api/bitmap/mixup/${device.mixup_id}.${imageExtension}?${urlQuery}`
-			: device.screen
-				? `/api/bitmap/${device.screen}.${imageExtension}?${urlQuery}`
-				: errorImageSrc("Device screen is not configured");
+
+	useEffect(() => {
+		fetchScreenUrls({
+			device,
+			playlistScreens,
+			renderSettings: {
+				modelName: selectedModel?.name,
+				paletteId: selectedPalette?.id ?? null,
+				orientation,
+			},
+		});
+	}, [
+		device,
+		playlistScreens,
+		fetchScreenUrls,
+		orientation,
+		selectedModel,
+		selectedPalette,
+	]);
+
+	if (!screenUrls || screenUrls.length < 1) {
+		return null;
+	}
 
 	return (
 		<div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
@@ -229,8 +240,9 @@ export default function DeviceView({
 							portrait={isPortrait}
 							screenAspectRatio={screenAspectRatio}
 						>
+							{/* TODO: change to render cache API. */}
 							<Image
-								src={heroSrc}
+								src={screenUrls[0]}
 								alt="Device screen"
 								fill
 								className="absolute inset-0 h-full w-full object-cover"
@@ -261,12 +273,9 @@ export default function DeviceView({
 										screenAspectRatio={screenAspectRatio}
 										flat
 									>
+										{/* TODO: chnage to render cache API. */}
 										<Image
-											src={
-												screen.screen
-													? `/api/bitmap/${screen.screen}.${imageExtension}?${urlQuery}`
-													: errorImageSrc("Playlist item has no screen")
-											}
+											src={screenUrls[i]}
 											alt={`Frame ${i + 1}`}
 											fill
 											className="absolute inset-0 h-full w-full object-cover"
@@ -456,12 +465,4 @@ export default function DeviceView({
 			</div>
 		</div>
 	);
-}
-
-function getModelImageExtension(model: TrmnlModel | undefined): string {
-	if (!model) return "png";
-	if (model.mime_type === "image/webp") return "webp";
-	if (model.mime_type === "image/bmp") return "bmp";
-	if (model.mime_type === "image/jpeg") return "jpg";
-	return "png";
 }

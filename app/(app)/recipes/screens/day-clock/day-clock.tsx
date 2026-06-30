@@ -5,13 +5,13 @@ import {
 } from "@/lib/recipes/constants";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import { createScreenProfile, ScreenProfile } from "@/lib/trmnl/screen-profile";
-import { localTimezone } from "@/lib/utils";
+import { configuredTimezone } from "@/lib/utils";
 import { PreSatori } from "@/utils/pre-satori";
 
 const useDoubling = true;
 
 export const paramsSchema = z.object({
-	$timezone: z.string().default(localTimezone()),
+	$timezone: z.string().default(configuredTimezone()),
 });
 
 export const dataSchema = paramsSchema.extend({ currentDtm: z.date() });
@@ -96,7 +96,6 @@ export default function DayClock({
 	params,
 	currentDtm,
 }: DayClockProps) {
-	console.log("DayClock", { screen, renderWidth, renderHeight });
 	const screenProfile =
 		screen ?? createScreenProfile({ width: renderWidth, height: renderHeight });
 	// The grid is coordinate-positioned (event top = time→y, left = day*colWidth),
@@ -105,7 +104,7 @@ export default function DayClock({
 	// logical width instead of its 1872px physical output.
 	const width = screenProfile.logicalWidth;
 	const height = screenProfile.logicalHeight;
-	const $timezone = params?.$timezone ?? localTimezone();
+	const $timezone = params?.$timezone ?? configuredTimezone();
 	const parts = getTimeParts(currentDtm, $timezone);
 	/* Longest test cases */
 	/*

@@ -32,7 +32,7 @@ import { resolveReactRecipe } from "@/lib/recipes/runtime/react";
 import { zodObjectToParamDefinitions } from "@/lib/recipes/zod-form";
 import { listModels, listPalettes } from "@/lib/trmnl/registry";
 import { FormatValue } from "@/lib/types";
-import { localTimezone } from "@/lib/utils";
+import { configuredTimezone } from "@/lib/utils";
 
 export async function generateMetadata() {
 	return {};
@@ -182,7 +182,7 @@ export default async function RecipePage({
 	const { orientation, format = DefaultFormat } = await searchParams;
 	const formatValue = format as FormatValue;
 	const isPortrait = orientation === "portrait";
-	const $timezone = localTimezone();
+	const $timezone = configuredTimezone();
 
 	// React recipe path
 	const resolved = await resolveReactRecipe(slug, $timezone, null);

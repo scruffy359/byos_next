@@ -12,7 +12,7 @@ import {
 } from "@/lib/trmnl/device-profile";
 import { type GrayscaleLevel, normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import type { Device } from "@/lib/types";
-import { localTimezone } from "../utils";
+import { configuredTimezone } from "../utils";
 
 /**
  * Single source of truth for "what should this device display?".
@@ -69,11 +69,13 @@ export async function selectDisplayForDevice(
 	const width = hints.width || dimensions.width;
 	const height = hints.height || dimensions.height;
 	const grayscaleLevels = normalizeGrayscale(device.grayscale);
-	const timezone = device?.timezone ?? localTimezone();
-	if (!device.screen) {
+	const timezone = device?.timezone ?? configuredTimezone();
+
+	const { screen } = device;
+
+	if (!screen) {
 		throw new Error("Device screen is not configured");
 	}
-	const screen = device.screen ?? "not-found";
 
 	// Image URLs must be self-contained. If the URL only carried width/
 	// height/grayscale, the bitmap route would infer model and palette from
@@ -91,11 +93,12 @@ export async function selectDisplayForDevice(
 	});
 	const baseQueryParams = params.toString();
 
+	// TODO only return associated url
 	const imageUrl = buildDeviceImageUrl({
 		baseUrl: `${hints.hostUrl}/api/bitmap`,
 		imagePath: screen,
 		profile,
-		query: baseQueryParams,
+		// TODO query: baseQueryParams,
 	});
 
 	const imageUrlAssociated = buildDeviceImageUrl({

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth/auth";
 import { BYOS_MONO_USER_ID, getCurrentUser } from "@/lib/auth/get-user";
 import { logInfo } from "@/lib/logger";
-import { localTimezone } from "@/lib/utils";
+import { configuredTimezone } from "@/lib/utils";
 
 /**
  * GET /api/me
@@ -47,8 +47,8 @@ export async function GET(request: Request) {
 				first_name: user.name.split(" ")[0] ?? null,
 				last_name: user.name.split(" ").slice(1).join(" ") || null,
 				locale: "en",
-				time_zone: localTimezone(),
-				time_zone_iana: localTimezone(),
+				time_zone: configuredTimezone(),
+				time_zone_iana: configuredTimezone(),
 				utc_offset: 0,
 			},
 		},

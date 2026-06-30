@@ -8,7 +8,7 @@ import { fetchDeviceByFriendlyId, updateDevice } from "@/app/actions/device";
 import { PageTemplate } from "@/components/common/page-template";
 import { StatusIndicator } from "@/components/common/status-indicator";
 import DeviceEditForm from "@/components/device/device-edit-form";
-import DeviceView from "@/components/device/device-view";
+import DeviceView, { DeviceWithState } from "@/components/device/device-view";
 import DeviceLogsContainer from "@/components/device-logs/device-logs-container";
 import { Button } from "@/components/ui/button";
 import { UI_REFRESH_FALLBACK_SECONDS } from "@/lib/device/defaults";
@@ -16,6 +16,7 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import { FunctionGetPreviewScreenUrls } from "@/lib/recipes/render/types";
 import {
 	DEVICE_SIZE_PRESETS,
 	type DeviceSizePreset,
@@ -32,13 +33,14 @@ import {
 } from "@/utils/helpers";
 
 interface DeviceClientPageProps {
-	initialDevice: Device & { status?: string; type?: string };
+	initialDevice: DeviceWithState;
 	availableScreens: { id: string; title: string }[];
 	availablePlaylists: Playlist[];
 	availableMixups: Mixup[];
 	playlistItems: PlaylistItem[];
 	trmnlModels: TrmnlModel[];
 	trmnlPalettes: TrmnlPalette[];
+	getScreenUrls: FunctionGetPreviewScreenUrls;
 }
 
 export default function DeviceClientPage({
@@ -49,6 +51,7 @@ export default function DeviceClientPage({
 	playlistItems,
 	trmnlModels,
 	trmnlPalettes,
+	getScreenUrls,
 }: DeviceClientPageProps) {
 	const [device, setDevice] = useState<
 		Device & { status?: string; type?: string }
@@ -317,6 +320,7 @@ export default function DeviceClientPage({
 						status: getDeviceStatus(updatedDevice),
 					};
 
+					console.log({ updatedDevice });
 					setDevice(enhancedDevice);
 					setEditedDevice(JSON.parse(JSON.stringify(enhancedDevice)));
 
@@ -412,15 +416,19 @@ export default function DeviceClientPage({
 	};
 
 	useEffect(() => {
-		if (editedDevice.playlist_id) {
-			const playlistScreens = playlistItems
-				.filter((item) => item.playlist_id === editedDevice.playlist_id)
-				.map((item) => ({
-					screen: item.screen_id,
-					duration: item.duration,
-				}));
-			setPlaylistScreens(playlistScreens);
+		if (!editedDevice.playlist_id) {
+			setPlaylistScreens([]);
 		}
+
+		const playlistScreens = playlistItems
+			.filter((item) => item.playlist_id === editedDevice.playlist_id)
+			.map((item) => ({
+				screen: item.screen_id,
+				duration: item.duration,
+			}));
+
+		console.log("device/client-page/useEffect", { playlistScreens });
+		setPlaylistScreens(playlistScreens);
 	}, [editedDevice.playlist_id, playlistItems]);
 
 	return (
@@ -512,6 +520,7 @@ export default function DeviceClientPage({
 			) : (
 				<DeviceView
 					device={device}
+					getScreenUrls={getScreenUrls}
 					playlistScreens={playlistScreens}
 					trmnlModels={trmnlModels}
 					trmnlPalettes={trmnlPalettes}

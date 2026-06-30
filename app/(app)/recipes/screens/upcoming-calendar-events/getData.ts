@@ -108,8 +108,6 @@ const getUpcomingCalendarEventsData = async (
 			start: getStartOfDay(),
 		});
 
-		console.info("Retreived new update-calendar-events", {});
-
 		const result = {
 			status: ResponseStatus.ok,
 			events,

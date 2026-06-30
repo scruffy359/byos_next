@@ -1,11 +1,155 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import {
+	createErrorRenderAssociationValuesForDevice,
+	createRenderAssociationValuesForDevice,
+	RenderAssociationType,
+	setRenderAssociationCacheEntry,
+} from "@/cache-handlers/bitmap-association-cache-handler";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentUserId } from "@/lib/auth/get-user";
+import { isNoDbMode } from "@/lib/database/utils";
 import { getInitData } from "@/lib/getInitData";
 import { listAllRecipes } from "@/lib/recipes/catalog";
+import { FunctionGetPreviewScreenArgs } from "@/lib/recipes/render/types";
 import { listModels, listPalettes } from "@/lib/trmnl/registry";
+import { DeviceDisplayMode } from "@/lib/types";
 import { getDeviceStatus } from "@/utils/helpers";
 import DeviceClientPage from "./client-page";
+
+export const getDevicePreviewScreenUrls = async (
+	values: FunctionGetPreviewScreenArgs,
+): Promise<string[]> => {
+	"use server";
+
+	const noDb = isNoDbMode();
+
+	const userId = !noDb ? await getCurrentUserId() : null;
+
+	if (!noDb && !userId) {
+		throw Error("Current user could not be determined.");
+	}
+
+	const { device, playlistScreens, renderSettings } = values;
+	const { modelName, paletteId, orientation } = renderSettings;
+	const isPlaylist = device.display_mode === DeviceDisplayMode.PLAYLIST;
+	const isMixup = device.display_mode === DeviceDisplayMode.MIXUP;
+
+	if (isPlaylist) {
+		if (!device.playlist_id) {
+			const errorAssociationValues =
+				await createErrorRenderAssociationValuesForDevice({
+					type: RenderAssociationType.devicePreview,
+					device,
+					errorMessage: "Device's playlist is not set",
+				});
+
+			setRenderAssociationCacheEntry(errorAssociationValues);
+
+			return [errorAssociationValues.imageUrl];
+		}
+
+		return Promise.all(
+			playlistScreens.map(async (playlistScreen) => {
+				if (!playlistScreen.screen) {
+					const errorAssociationValues =
+						await createErrorRenderAssociationValuesForDevice({
+							type: RenderAssociationType.devicePreview,
+							device,
+							errorMessage: "Playlist item has no screen",
+						});
+
+					setRenderAssociationCacheEntry(errorAssociationValues);
+
+					return errorAssociationValues.imageUrl;
+				}
+				const associationValues = await createRenderAssociationValuesForDevice({
+					type: RenderAssociationType.devicePreview,
+					screenId: playlistScreen.screen,
+					device,
+					renderSettings: {
+						modelName,
+						paletteId,
+						orientation,
+					},
+					recipePreview: {
+						userId,
+					},
+					dataParams: null,
+				});
+
+				setRenderAssociationCacheEntry(associationValues);
+
+				return associationValues.imageUrl;
+			}),
+		);
+	}
+
+	if (isMixup) {
+		if (!device.mixup_id) {
+			const errorAssociationValues =
+				await createErrorRenderAssociationValuesForDevice({
+					type: RenderAssociationType.devicePreview,
+					device,
+					errorMessage: "Device's mixup is not set",
+				});
+
+			setRenderAssociationCacheEntry(errorAssociationValues);
+
+			return [errorAssociationValues.imageUrl];
+		}
+		const associationValues = await createRenderAssociationValuesForDevice({
+			type: RenderAssociationType.recipePreview,
+			screenId: `mixup/${device.mixup_id}`,
+			device,
+			renderSettings: {
+				modelName,
+				paletteId,
+				orientation,
+			},
+			recipePreview: {
+				userId,
+			},
+			dataParams: null,
+		});
+
+		setRenderAssociationCacheEntry(associationValues);
+
+		return [associationValues.imageUrl];
+	}
+
+	if (!device.screen) {
+		const errorAssociationValues =
+			await createErrorRenderAssociationValuesForDevice({
+				type: RenderAssociationType.devicePreview,
+				device,
+				errorMessage: "Device screen is not configured",
+			});
+
+		setRenderAssociationCacheEntry(errorAssociationValues);
+
+		return [errorAssociationValues.imageUrl];
+	}
+
+	const associationValues = await createRenderAssociationValuesForDevice({
+		type: RenderAssociationType.recipePreview,
+		screenId: device.screen,
+		device,
+		renderSettings: {
+			modelName,
+			paletteId,
+			orientation,
+		},
+		recipePreview: {
+			userId,
+		},
+		dataParams: null,
+	});
+
+	setRenderAssociationCacheEntry(associationValues);
+
+	return [associationValues.imageUrl];
+};
 
 // Loading fallback for the device page
 const DevicePageSkeleton = () => (
@@ -77,6 +221,7 @@ const DeviceData = async ({ friendlyId }: { friendlyId: string }) => {
 			playlistItems={playlistItems}
 			trmnlModels={trmnlModels}
 			trmnlPalettes={trmnlPalettes}
+			getScreenUrls={getDevicePreviewScreenUrls}
 		/>
 	);
 };

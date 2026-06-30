@@ -1,13 +1,11 @@
 import { connection, type NextRequest } from "next/server";
 import { cache } from "react";
-import { fetchDeviceByApiKey } from "@/app/actions/device";
 import {
 	getRenderAssociatedCacheEntry,
 	RenderAssociationType,
-	RenderAssociationValues,
+	resolveAssociationData,
+	resolveDeviceProfile,
 } from "@/cache-handlers/bitmap-association-cache-handler";
-import { db } from "@/lib/database/db";
-import { checkDbConnection } from "@/lib/database/utils";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
@@ -29,7 +27,6 @@ import {
 	getDeviceProfile,
 } from "@/lib/trmnl/device-profile";
 import { FormatValue } from "@/lib/types";
-import { localTimezone } from "@/lib/utils";
 
 export async function GET(
 	req: NextRequest,
@@ -88,20 +85,21 @@ export async function GET(
 		if (!resolvedData) {
 			throw new Error("Required data could not be resolved");
 		}
-		const { userId, internalValues } = resolvedData;
+		const { userId, device, internalValues } = resolvedData;
 
 		// Forward cookies so browser rendering can reuse the caller's auth session.
 		const cookieHeader = req.headers.get("cookie"); // TODO: is this needed? as cookies aren't really TRMNL
 
-		const profile = await resolveDeviceProfileForRequest(associatedValues);
+		const profile = await resolveDeviceProfile(device);
 
 		if (recipeSlug === "error") {
 			const imageWidth = imageRequest.width ?? profile.model.width;
 			const imageHeight = imageRequest.height ?? profile.model.height;
 			const oversized = rejectOversizedImageArea(imageWidth, imageHeight);
 			if (oversized) return oversized;
+
+			// TODO: error processing
 			const errorMessage =
-				searchParams.get("message") ??
 				(dataParams?.errorMessage as string) ??
 				"An unknown display error has occurred.";
 			const image = await renderErrorImage({
@@ -228,45 +226,6 @@ const resolveProfileForError = async () => {
 	return await getDeviceProfile(DEFAULT_MODEL_NAME, null);
 };
 
-async function resolveDeviceProfileForRequest(
-	associationValues: RenderAssociationValues,
-): Promise<DeviceProfile> {
-	const { type: associationType } = associationValues;
-
-	if (associationType === RenderAssociationType.display) {
-		if (!associationValues.device) {
-			throw Error("Render association for 'device' missing data.");
-		}
-
-		const { apiKey } = associationValues.device;
-		const { ready } = await checkDbConnection();
-		if (ready) {
-			const device = await db
-				.selectFrom("devices")
-				.select(["model", "palette_id"])
-				.where("api_key", "=", apiKey)
-				.executeTakeFirst();
-
-			const modelName = device?.model ?? DEFAULT_MODEL_NAME;
-			const paletteId = device?.palette_id ?? null;
-
-			return getDeviceProfile(modelName, paletteId);
-		}
-		throw new Error("Bitmap device/profile could not be determined.");
-	} // preview
-
-	if (
-		associationType === RenderAssociationType.recipePreview &&
-		!associationValues.recipePreview
-	) {
-		throw Error("Render association for 'recipePreview' missing data.");
-	}
-
-	const { modelName, paletteId } = associationValues.renderSettings;
-
-	return getDeviceProfile(modelName, paletteId);
-}
-
 function getImageResponseHeaders(image: {
 	buffer: Buffer;
 	mime_type: string;
@@ -308,47 +267,3 @@ const renderRecipeBitmap = cache(
 		return renders.bitmap ?? Buffer.from([]);
 	},
 );
-
-async function resolveAssociationData(
-	associatedValues: RenderAssociationValues,
-) {
-	const {
-		type: associationType,
-		device: associationDevice,
-		recipePreview: preview,
-	} = associatedValues;
-
-	if (associationType === RenderAssociationType.recipePreview) {
-		// preview path
-		if (!preview) {
-			throw new Error("Bitmap association entry missing 'preview'");
-		}
-
-		return {
-			userId: preview.userId,
-			internalValues: {
-				$timezone: localTimezone(),
-			},
-		};
-	}
-
-	if (!associationDevice) {
-		throw new Error("Render association entry missing 'device'");
-	}
-
-	const device = await fetchDeviceByApiKey(associationDevice.apiKey, {
-		assumeDbReady: true,
-	});
-
-	if (!device) {
-		console.error("Device not found with apiKey.");
-		return null;
-	}
-
-	return {
-		userId: device.user_id,
-		internalValues: {
-			$timezone: device.timezone,
-		},
-	};
-}

@@ -1,12 +1,19 @@
+// TODO: split cache integration for association data manipulation methods
 import { env } from "node:process";
 import Valkey from "iovalkey";
-import { ScreenIdError } from "@/lib/recipes/render/types";
+import { fetchDeviceByApiKey } from "@/app/actions/device";
+import {
+	AssociationRenderSettings,
+	ScreenIdError,
+} from "@/lib/recipes/render/types";
 import { buildDeviceImageUrl } from "@/lib/render/device-image-url";
 import {
 	DEFAULT_MODEL_NAME,
+	DeviceProfile,
 	getDeviceProfile,
 } from "@/lib/trmnl/device-profile";
 import { Device } from "@/lib/types";
+import { configuredTimezone } from "@/lib/utils";
 
 const ExpireMinutes = 10;
 export const ExpireSeconds = 60 * ExpireMinutes;
@@ -34,13 +41,6 @@ export enum RenderAssociationType {
 	devicePreview = "device-preview",
 }
 
-export type AssociationRenderSettings = {
-	// TODO: width & height?
-	modelName: string | null;
-	paletteId: string | null;
-	orientation: string; // why not considered in bitmap logic?
-};
-
 type AssociationPreview = {
 	/** The user requesting the preview from the UI. Will be `null` when in noDB mode.*/
 	userId: string | null;
@@ -50,7 +50,6 @@ const getAssociationKey = (associationId: string) => {
 	return `render-${associationId}`;
 };
 
-// TODO: persist parameters, allowing /api/display/current to show data at that point in time.
 // TODO: fix /api/display/current to know the actually current screen. Need another cache (FRIENDLY_ID -> ASSOCIATION_ID)
 export type RenderAssociationValues = {
 	associationId: string;
@@ -81,6 +80,7 @@ export const createErrorRenderAssociationValuesForDevice = async ({
 		type,
 		device,
 		screenId: ScreenIdError,
+		renderSettings: null,
 		dataParams: {
 			errorMessage,
 		},
@@ -97,6 +97,7 @@ export const createRenderAssociationValuesForDevice = async ({
 	type: RenderAssociationType;
 	screenId: string;
 	device: Device;
+	renderSettings: AssociationRenderSettings | null;
 	recipePreview?: AssociationPreview;
 	dataParams: Record<string, unknown> | null;
 }) => {
@@ -120,7 +121,7 @@ export const createRenderAssociationValuesForDevice = async ({
 		associationId,
 		type,
 		imageUrl,
-		screenId: screenId,
+		screenId,
 		renderSettings: {
 			modelName,
 			paletteId,
@@ -258,3 +259,117 @@ export const getCurrentScreenCacheEntry = async (
 	const object = JSON.parse(value);
 	return object;
 };
+
+type PseudoDevice = Pick<
+	Device,
+	| "id"
+	| "name"
+	| "friendly_id"
+	| "user_id"
+	| "timezone"
+	| "model"
+	| "palette_id"
+>;
+
+const getPseudoPreviewDevice = ({
+	userId,
+	modelName,
+	paletteId,
+}: {
+	userId: string;
+	modelName: string | null;
+	paletteId: string | null;
+}): Device => {
+	const result: PseudoDevice = {
+		id: 0,
+		name: "PseudoPreviewDevice",
+		friendly_id: "pseudo-preview-device",
+		user_id: userId,
+		model: modelName,
+		palette_id: paletteId,
+		// TODO: lookup up user's timezone
+		timezone: configuredTimezone(),
+	};
+	return result as Device;
+};
+
+export async function resolveAssociationData(
+	associatedValues: RenderAssociationValues,
+): Promise<{
+	userId: string;
+	device: Device;
+	internalValues: {
+		$timezone: string;
+	};
+} | null> {
+	const {
+		type: associationType,
+		device: associationDevice,
+		renderSettings,
+		recipePreview: preview,
+	} = associatedValues;
+
+	if (associationType === RenderAssociationType.recipePreview) {
+		// preview path
+		if (!preview) {
+			throw new Error("Render association entry missing 'reviewPreview'");
+		}
+
+		const { userId } = preview;
+		const { modelName, paletteId } = renderSettings;
+
+		if (!userId) {
+			throw new Error("Render association preview missing user ID.");
+		}
+
+		// create Pseudo Preview Device
+		const previewDevice = getPseudoPreviewDevice({
+			userId,
+			modelName,
+			paletteId,
+		});
+		return {
+			userId,
+			device: previewDevice,
+			internalValues: {
+				$timezone: configuredTimezone(),
+			},
+		};
+	}
+
+	if (!associationDevice) {
+		throw new Error("Render association entry missing 'device'");
+	}
+
+	const device = await fetchDeviceByApiKey(associationDevice.apiKey, {
+		assumeDbReady: true,
+	});
+
+	if (!device) {
+		console.error("Device not found with apiKey.");
+		return null;
+	}
+
+	if (!device.user_id) {
+		console.error("Device is not assigned a user ID.");
+		return null;
+	}
+
+	return {
+		userId: device.user_id,
+		device,
+		internalValues: {
+			$timezone: device.timezone,
+		},
+	};
+}
+
+export async function resolveDeviceProfile(
+	device: Device,
+): Promise<DeviceProfile> {
+	// assumes we've been passed a real device or a psuedo device.
+	const modelName = device?.model ?? DEFAULT_MODEL_NAME;
+	const paletteId = device?.palette_id ?? null;
+
+	return getDeviceProfile(modelName, paletteId);
+}

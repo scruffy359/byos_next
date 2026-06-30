@@ -25,6 +25,9 @@ export function stripImageExtension(imagePath: string): string {
 	return imagePath.replace(IMAGE_EXTENSION_PATTERN, "");
 }
 
+/**
+ * @deprecated After upgrade to Render Cache.
+ */
 export function buildDeviceImageFilename(
 	imagePath: string,
 	uniqueId: string,
@@ -33,6 +36,9 @@ export function buildDeviceImageFilename(
 	return `${stripImageExtension(imagePath)}_${uniqueId}.${getImageFilenameExtension(profile)}`;
 }
 
+/**
+ * @deprecated After upgrade to Render Cache.
+ */
 export function buildDeviceImageUrl({
 	baseUrl,
 	imagePath,
@@ -50,7 +56,9 @@ export function buildDeviceImageUrl({
 
 	return `${baseUrl}/${normalizedPath}.${extension}${suffix}`;
 }
-
+/**
+ * @deprecated After upgrade to Render Cache.
+ */
 export function buildDeviceImageUrlWithImageType({
 	baseUrl,
 	imagePath,
@@ -79,6 +87,9 @@ type DeviceRenderOptions = {
 	paletteId: string | null;
 };
 
+/**
+ * @deprecated After upgrade to Render Cache.
+ */
 export function buildDeviceImageParameters({
 	width,
 	height,

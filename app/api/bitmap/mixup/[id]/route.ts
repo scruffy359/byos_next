@@ -1,7 +1,11 @@
 import type { NextRequest } from "next/server";
 import sharp from "sharp";
-import { getCurrentUserId } from "@/lib/auth/get-user";
-import { db } from "@/lib/database/db";
+import {
+	getRenderAssociatedCacheEntry,
+	RenderAssociationType,
+	resolveAssociationData,
+	resolveDeviceProfile,
+} from "@/cache-handlers/bitmap-association-cache-handler";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { getLayoutById, type LayoutSlot } from "@/lib/mixup/constants";
@@ -15,9 +19,8 @@ import { renderDeviceImage } from "@/lib/render/device-image";
 import { stripImageExtension } from "@/lib/render/device-image-url";
 import { renderErrorImage } from "@/lib/render/error-image";
 import { parseImageRequest } from "@/lib/render/image-request";
-import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import { FormatValue } from "@/lib/types";
-import { localTimezone } from "@/lib/utils";
+import { configuredTimezone } from "@/lib/utils";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 export async function GET(
@@ -26,7 +29,17 @@ export async function GET(
 ) {
 	try {
 		const { id } = await params;
-		const mixupId = stripImageExtension(id);
+		const associationId = stripImageExtension(id);
+
+		// validate database is available.
+		const { ready } = await checkDbConnection();
+		if (!ready) {
+			logger.error("Database not available for mixup rendering");
+			const image = await renderErrorImage({
+				message: "Database not available",
+			});
+			return imageResponse(image, 503);
+		}
 
 		const { searchParams } = new URL(req.url);
 		const imageRequest = parseImageRequest(searchParams, {
@@ -34,24 +47,36 @@ export async function GET(
 			height: DEFAULT_IMAGE_HEIGHT,
 		});
 		if (imageRequest instanceof Response) return imageRequest;
-		const accessToken =
-			searchParams.get("access_token") ?? req.headers.get("Access-Token");
-		const $timezone = searchParams.get("$timezone") || localTimezone();
+
+		const associatedValues = await getRenderAssociatedCacheEntry(associationId);
+
+		if (associatedValues === null) {
+			throw new Error(
+				`Mixup Screen cannot be found for Association ID: ${associationId}`,
+			);
+		}
+
+		const { screenId, type: associationType } = associatedValues;
+
+		const mixupId = screenId;
+
+		// Resolve the device owner so recipe parameters are scoped to proper user.
+		const resolvedData = await resolveAssociationData(associatedValues);
+		if (!resolvedData) {
+			throw new Error("Required data could not be resolved");
+		}
+		const { userId, device } = resolvedData;
+
+		if (!userId) {
+			return new Response("Access token is required", { status: 401 });
+		}
+
+		const profile = await resolveDeviceProfile(device);
+
+		const $timezone = searchParams.get("$timezone") || configuredTimezone();
 		const width = imageRequest.width ?? DEFAULT_IMAGE_WIDTH;
 		const height = imageRequest.height ?? DEFAULT_IMAGE_HEIGHT;
 		const grayscaleLevels = imageRequest.grayscaleLevels;
-
-		const { ready } = await checkDbConnection();
-		if (!ready) {
-			logger.error("Database not available for mixup rendering");
-			const image = await renderErrorImage({
-				message: "Database not available",
-				width,
-				height,
-				grayscale: grayscaleLevels,
-			});
-			return imageResponse(image, 503);
-		}
 
 		// Two auth paths:
 		//  1. Device callback — `access_token` query param or `Access-Token` header
@@ -59,50 +84,24 @@ export async function GET(
 		//  2. Browser/admin — signed-in user owns the mixup. Used by the UI
 		//     (mixup-list, device-view, device-edit-form) which can't add an
 		//     access_token to <img> srcs.
-		let userId: string | null = null;
-		let profileSource: {
-			model: string | null;
-			palette_id: string | null;
-		} | null = null;
 
-		if (accessToken) {
-			const device = await db
-				.selectFrom("devices")
-				.select(["user_id", "mixup_id", "model", "palette_id"])
-				.where("api_key", "=", accessToken)
-				.executeTakeFirst();
-
+		if (associationType === RenderAssociationType.display) {
 			if (!device || device.mixup_id !== mixupId || !device.user_id) {
 				return new Response("Mixup not found", { status: 404 });
 			}
-			userId = device.user_id;
-			profileSource = { model: device.model, palette_id: device.palette_id };
 		} else {
-			const sessionUserId = await getCurrentUserId();
-			if (!sessionUserId) {
-				return new Response("Access token is required", { status: 401 });
-			}
-			const owned = await withExplicitUserScope(sessionUserId, (scopedDb) =>
+			const owned = await withExplicitUserScope(userId, (scopedDb) =>
 				scopedDb
 					.selectFrom("mixups")
 					.select("id")
 					.where("id", "=", mixupId)
 					.executeTakeFirst(),
 			);
+
 			if (!owned) {
 				return new Response("Mixup not found", { status: 404 });
 			}
-			userId = sessionUserId;
 		}
-
-		// Query-string overrides win — keeps mixup preview URLs self-contained
-		// the same way `/api/bitmap` URLs are. Without this, a `<img>` whose URL
-		// includes `model` and `palette_id` would still render against the
-		// device-row defaults.
-		const profile = await getDeviceProfile(
-			imageRequest.modelName ?? profileSource?.model,
-			imageRequest.paletteId ?? profileSource?.palette_id,
-		);
 
 		// Fetch mixup and its slots (join with recipes to get slug)
 		const [mixup, slots] = await withExplicitUserScope(userId, (scopedDb) =>
@@ -177,9 +176,10 @@ export async function GET(
 		return imageResponse(image);
 	} catch (error) {
 		logger.error("Error generating mixup image:", error);
+		const message =
+			error instanceof Error ? error.message : "Error generating image";
 		const image = await renderErrorImage({
-			message:
-				error instanceof Error ? error.message : "Error generating image",
+			message,
 		});
 		return imageResponse(image, 500);
 	}

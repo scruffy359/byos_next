@@ -27,7 +27,7 @@ import type {
 	RefreshSchedule,
 	TimeRange,
 } from "@/lib/types";
-import { localTimezone } from "@/lib/utils";
+import { configuredLocale, configuredTimezone } from "@/lib/utils";
 import {
 	generateApiKey,
 	generateFriendlyId,
@@ -127,6 +127,7 @@ export const calculateRefreshRate = (
 	defaultRefreshRate: number,
 	timezone: string = timezones[0].value,
 ): number => {
+	const locale = configuredLocale();
 	if (!refreshSchedule) {
 		return defaultRefreshRate;
 	}
@@ -136,7 +137,7 @@ export const calculateRefreshRate = (
 		timeZone: timezone,
 		hour12: false,
 	} as Intl.DateTimeFormatOptions;
-	const formatter = new Intl.DateTimeFormat("en-US", {
+	const formatter = new Intl.DateTimeFormat(locale, {
 		...options,
 		hour: "2-digit",
 		minute: "2-digit",
@@ -157,12 +158,13 @@ export const calculateRefreshRate = (
 export const getActivePlaylistItem = async (
 	playlistId: string,
 	currentIndex: number,
-	timezone: string = localTimezone(),
+	timezone: string = configuredTimezone(),
 	userId?: string | null,
 ): Promise<PlaylistItem | null> => {
 	const { ready } = await checkDbConnection();
 	if (!ready) return null;
 
+	const locale = configuredLocale();
 	const runQuery = (conn: typeof db) =>
 		conn
 			.selectFrom("playlist_items")
@@ -189,7 +191,7 @@ export const getActivePlaylistItem = async (
 		hour12: false,
 	} as Intl.DateTimeFormatOptions;
 
-	const timeFormatter = new Intl.DateTimeFormat("en-US", {
+	const timeFormatter = new Intl.DateTimeFormat(locale, {
 		...options,
 		hour: "2-digit",
 		minute: "2-digit",
@@ -199,7 +201,7 @@ export const getActivePlaylistItem = async (
 	const currentTime = `${hour}:${minute}`;
 
 	// TODO: fix hardcoded locale
-	const dayFormatter = new Intl.DateTimeFormat("en-US", {
+	const dayFormatter = new Intl.DateTimeFormat(locale, {
 		...options,
 		weekday: "long",
 	});
@@ -576,7 +578,7 @@ export const findOrCreateDevice = async (
 						next_expected_update: new Date(
 							Date.now() + DEVICE_SLEEP_REFRESH_SECONDS * 1000,
 						).toISOString(),
-						timezone: localTimezone(),
+						timezone: configuredTimezone(),
 						screen: DEFAULT_DEVICE_SCREEN,
 						model: modelResolution.modelName ?? null,
 						user_id: currentUserId,
