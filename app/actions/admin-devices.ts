@@ -6,7 +6,7 @@ import { checkDbConnection } from "@/lib/database/utils";
 
 async function requireAdmin() {
 	const user = await getCurrentUser();
-	if (!user || user.role !== "admin") {
+	if (user?.role !== "admin") {
 		throw new Error("Unauthorized");
 	}
 	return user;

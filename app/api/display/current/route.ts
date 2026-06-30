@@ -5,11 +5,11 @@ import {
 	DISPLAY_FALLBACK_REFRESH_SECONDS,
 	normalizeRefreshSchedule,
 } from "@/lib/device/defaults";
+import { normalizeSelectedDevice } from "@/lib/device/device-utils";
 import { selectDisplayForDevice } from "@/lib/display/select";
 import { logError, logInfo } from "@/lib/logger";
 import { buildDeviceImageFilename } from "@/lib/render/device-image-url";
 import { getCurrentScreenAssociation } from "@/lib/render/render-association";
-import type { Device } from "@/lib/types";
 import { parseRequestHeaders, resolveUserIdFromApiKey } from "../utils";
 
 /**
@@ -64,15 +64,13 @@ export async function GET(request: Request) {
 			);
 		}
 
+		const normalizedDevice = normalizeSelectedDevice(device);
+
 		// TODO: fix; get current screen
-		// TODO: fix type issue needing to cast as "unknown".
-		const associationValues = await getCurrentScreenAssociation(
-			device as unknown as Device,
-		);
+		const associationValues =
+			await getCurrentScreenAssociation(normalizedDevice);
 
-		const deviceData = device as unknown as Device;
-
-		const selection = await selectDisplayForDevice(deviceData, {
+		const selection = await selectDisplayForDevice(normalizedDevice, {
 			hostUrl: headers.hostUrl,
 			renderAssociationId: associationValues.associationId,
 			width: headers.width,
@@ -80,7 +78,7 @@ export async function GET(request: Request) {
 		});
 
 		const refreshSchedule = normalizeRefreshSchedule(
-			deviceData.refresh_schedule,
+			normalizedDevice.refresh_schedule,
 		);
 		const refreshRate =
 			refreshSchedule?.default_refresh_rate || DISPLAY_FALLBACK_REFRESH_SECONDS;
@@ -88,7 +86,7 @@ export async function GET(request: Request) {
 		logInfo("Current display request successful", {
 			source: "api/display/current",
 			metadata: {
-				deviceId: deviceData.friendly_id,
+				deviceId: normalizedDevice.friendly_id,
 				// TODO: this is not correct as it's not the actually active screen.
 				screen: selection.screen,
 			},
@@ -104,7 +102,8 @@ export async function GET(request: Request) {
 					"current",
 					selection.profile,
 				),
-				rendered_at: deviceData.last_update_time || new Date().toISOString(),
+				rendered_at:
+					normalizedDevice.last_update_time || new Date().toISOString(),
 			},
 			{ status: 200 },
 		);

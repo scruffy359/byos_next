@@ -42,7 +42,7 @@ export type Device = {
 	updated_at: string | null;
 	playlist_id: string | null;
 	mixup_id: string | null;
-	display_mode: DeviceDisplayMode;
+	display_mode: DeviceDisplayMode | null;
 	current_playlist_index: number | null;
 	user_id: string | null;
 	screen_width: number | null;

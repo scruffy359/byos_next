@@ -11,6 +11,7 @@ import {
 	DEVICE_SLEEP_REFRESH_SECONDS,
 	serializeRefreshSchedule,
 } from "@/lib/device/defaults";
+import { normalizeSelectedDevice } from "@/lib/device/device-utils";
 import {
 	hashClaimCode,
 	normalizeClaimCode,
@@ -43,7 +44,7 @@ export async function fetchDeviceByFriendlyId(
 		return null;
 	}
 
-	return device as unknown as Device;
+	return normalizeSelectedDevice(device);
 }
 
 /**
