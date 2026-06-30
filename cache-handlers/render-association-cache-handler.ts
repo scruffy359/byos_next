@@ -1,6 +1,6 @@
 import { env } from "node:process";
 import Valkey from "iovalkey";
-import { RenderAssociationValues } from "@/lib/render/render-annotation-types";
+import { RenderAssociationValues } from "@/lib/render/render-association-types";
 
 const ExpireMinutes = 10;
 const ExpireSeconds = 60 * ExpireMinutes;

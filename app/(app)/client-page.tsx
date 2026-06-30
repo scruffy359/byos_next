@@ -20,7 +20,7 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { RenderAssociationValues } from "@/lib/render/render-annotation-types";
+import { RenderAssociationValues } from "@/lib/render/render-association-types";
 import type { Device, SystemLog } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";

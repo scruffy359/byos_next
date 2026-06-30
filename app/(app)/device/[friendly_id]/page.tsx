@@ -7,13 +7,13 @@ import { isNoDbMode } from "@/lib/database/utils";
 import { getInitData } from "@/lib/getInitData";
 import { listAllRecipes } from "@/lib/recipes/catalog";
 import {
-	FunctionGetPreviewScreenArgs,
-	RenderAssociationType,
-} from "@/lib/render/render-annotation-types";
-import {
 	createErrorRenderAssociationValuesForDevice,
 	createRenderAssociationValuesForDevice,
 } from "@/lib/render/render-association";
+import {
+	FunctionGetPreviewScreenArgs,
+	RenderAssociationType,
+} from "@/lib/render/render-association-types";
 import { listModels, listPalettes } from "@/lib/trmnl/registry";
 import { DeviceDisplayMode } from "@/lib/types";
 import { getDeviceStatus } from "@/utils/helpers";

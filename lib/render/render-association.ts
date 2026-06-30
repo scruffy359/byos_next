@@ -24,7 +24,7 @@ import {
 	FunctionGetPreviewScreenArgs,
 	RenderAssociationType,
 	RenderAssociationValues,
-} from "./render-annotation-types";
+} from "./render-association-types";
 
 export const getCurrentScreenAssociation = async (
 	device: Device,
@@ -340,6 +340,8 @@ export async function resolveAssociationData(
 			userId,
 			modelName,
 			paletteId,
+			//
+			$timezone: null,
 		});
 		return {
 			userId,
@@ -387,24 +389,27 @@ export async function resolveDeviceProfile(
 	return getDeviceProfile(modelName, paletteId);
 }
 
+const PseudoDeviceId = -1;
+
 const getPseudoPreviewDevice = ({
 	userId,
 	modelName,
 	paletteId,
+	$timezone,
 }: {
 	userId: string;
 	modelName: string | null;
 	paletteId: string | null;
+	$timezone: string | null;
 }): Device => {
 	const result: PseudoDevice = {
-		id: 0,
+		id: PseudoDeviceId,
 		name: "PseudoPreviewDevice",
 		friendly_id: "pseudo-preview-device",
 		user_id: userId,
 		model: modelName,
 		palette_id: paletteId,
-		// TODO: lookup up user's timezone
-		timezone: configuredTimezone(),
+		timezone: $timezone ?? configuredTimezone(),
 	};
 	return result as Device;
 };

@@ -21,7 +21,7 @@ import {
 import {
 	RenderAssociationType,
 	RenderAssociationValues,
-} from "@/lib/render/render-annotation-types";
+} from "@/lib/render/render-association-types";
 import { configuredTimezone } from "@/lib/utils";
 import {
 	buildClaimResponse,

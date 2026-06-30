@@ -16,11 +16,11 @@ import {
 	parseImageRequest,
 	rejectOversizedImageArea,
 } from "@/lib/render/image-request";
-import { RenderAssociationType } from "@/lib/render/render-annotation-types";
 import {
 	resolveAssociationData,
 	resolveDeviceProfile,
 } from "@/lib/render/render-association";
+import { RenderAssociationType } from "@/lib/render/render-association-types";
 import {
 	DEFAULT_MODEL_NAME,
 	type DeviceProfile,

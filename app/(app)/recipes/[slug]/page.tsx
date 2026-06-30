@@ -25,11 +25,11 @@ import {
 import { getRendererType } from "@/lib/recipes/render/rasterize";
 import { resolveReactRecipe } from "@/lib/recipes/runtime/react";
 import { zodObjectToParamDefinitions } from "@/lib/recipes/zod-form";
+import { createRenderAssociationValuesForSettings } from "@/lib/render/render-association";
 import {
 	RenderAssociationType,
 	ResolvePreviewImageUrlParameters,
-} from "@/lib/render/render-annotation-types";
-import { createRenderAssociationValuesForSettings } from "@/lib/render/render-association";
+} from "@/lib/render/render-association-types";
 import { listModels, listPalettes } from "@/lib/trmnl/registry";
 import { FormatValue } from "@/lib/types";
 import { configuredTimezone } from "@/lib/utils";

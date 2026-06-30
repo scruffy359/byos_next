@@ -14,11 +14,11 @@ import { renderDeviceImage } from "@/lib/render/device-image";
 import { stripImageExtension } from "@/lib/render/device-image-url";
 import { renderErrorImage } from "@/lib/render/error-image";
 import { parseImageRequest } from "@/lib/render/image-request";
-import { RenderAssociationType } from "@/lib/render/render-annotation-types";
 import {
 	resolveAssociationData,
 	resolveDeviceProfile,
 } from "@/lib/render/render-association";
+import { RenderAssociationType } from "@/lib/render/render-association-types";
 import { FormatValue } from "@/lib/types";
 import { configuredTimezone } from "@/lib/utils";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";

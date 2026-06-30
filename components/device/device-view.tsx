@@ -18,7 +18,7 @@ import {
 import {
 	FunctionGetPreviewScreenArgs,
 	FunctionGetPreviewScreenUrls,
-} from "@/lib/render/render-annotation-types";
+} from "@/lib/render/render-association-types";
 import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
 import type { Device } from "@/lib/types";
