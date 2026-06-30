@@ -31,6 +31,10 @@ export type ResolvedReactRecipe = {
 
 const FETCH_TIMEOUT_MS = 10_000;
 
+const formatJson = (value: unknown) => {
+	return JSON.stringify(value, undefined, 2);
+};
+
 function safeParseWithDefaults(
 	schema: z.ZodObject,
 	value: unknown,
@@ -42,9 +46,13 @@ function safeParseWithDefaults(
 	if (result.success) return result.data as Record<string, unknown>;
 	// Stored shape no longer matches the schema (e.g. field renamed). Report it
 	// and render from the schema-defined defaults so the device shows a valid UI.
-	console.warn(`[recipe:${context}] Stored params failed schema validation`, {
-		issues: result.error.issues,
-	});
+	console.warn(`[recipe:${context}] Stored params failed schema validation`);
+	console.warn(
+		formatJson({
+			issues: result.error.issues,
+		}),
+	);
+
 	const defaults = schema.safeParse({});
 	return defaults.success ? (defaults.data as Record<string, unknown>) : {};
 }
@@ -60,9 +68,12 @@ function safeParseDataWithDefaults(
 			? (data as Record<string, unknown>)
 			: {};
 	}
-	console.warn("[recipe:data] Data failed schema validation", {
-		issues: result.error.issues,
-	});
+	console.warn("[recipe:data] Data failed schema validation");
+	console.warn(
+		formatJson({
+			issues: result.error.issues,
+		}),
+	);
 	const defaults = schema.safeParse({});
 	if (defaults.success) {
 		const data = defaults.data;
@@ -129,17 +140,5 @@ export const resolveReactRecipe = async (
 		data = safeParseDataWithDefaults(definition.dataSchema, params);
 	}
 
-	/*
-	console.trace();
-	console.log({
-		where: "resolveReactRecipe",
-		useClient: typeof window !== "undefined",
-		$timezone,
-		storedOverrides,
-		internalValues,
-		params,
-		data,
-	});
-	*/
 	return { definition, params, data };
 };

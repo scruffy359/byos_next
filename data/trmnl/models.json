@@ -20,7 +20,7 @@
         "bw"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -74,7 +74,7 @@
         "bw"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -291,7 +291,7 @@
         "gray-4"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -401,7 +401,7 @@
         "color-6a"
       ],
       "preview_white_point": "limited",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -457,7 +457,7 @@
         "gray-16"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -566,7 +566,7 @@
         "gray-4"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -622,7 +622,7 @@
         "gray-16"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -678,7 +678,7 @@
         "gray-16"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -733,7 +733,7 @@
         "color-6a"
       ],
       "preview_white_point": "limited",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -789,7 +789,7 @@
         "gray-16"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -898,7 +898,7 @@
         "gray-4"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -953,7 +953,7 @@
         "bw"
       ],
       "preview_white_point": "limited",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1008,7 +1008,7 @@
         "gray-4"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1062,7 +1062,7 @@
         "bw"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1116,7 +1116,7 @@
         "color-24bit"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": false
     },
     {
@@ -1141,7 +1141,7 @@
         "color-24bit"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1195,7 +1195,7 @@
         "gray-256"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1251,7 +1251,7 @@
         "gray-16"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1307,7 +1307,7 @@
         "gray-16"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1361,7 +1361,7 @@
         "color-3bwr"
       ],
       "preview_white_point": "limited",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1415,7 +1415,7 @@
         "color-4bwry"
       ],
       "preview_white_point": "limited",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1473,7 +1473,7 @@
         "color-12bit"
       ],
       "preview_white_point": "limited",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1527,7 +1527,7 @@
         "bw"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1640,7 +1640,7 @@
         "gray-16"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1694,7 +1694,7 @@
         "color-4bwry"
       ],
       "preview_white_point": "limited",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1804,7 +1804,7 @@
         "gray-16"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1858,7 +1858,7 @@
         "color-24bit"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1914,7 +1914,7 @@
         "gray-16"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -1970,7 +1970,7 @@
         "gray-16"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -2026,7 +2026,7 @@
         "gray-16"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -2082,7 +2082,7 @@
         "gray-16"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -2140,7 +2140,7 @@
         "color-24bit"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -2251,7 +2251,7 @@
         "gray-4"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -2307,7 +2307,7 @@
         "gray-16"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -2361,7 +2361,7 @@
         "color-7a"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -2417,7 +2417,7 @@
         "bw"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -2472,7 +2472,7 @@
         "color-6a"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -2528,7 +2528,7 @@
         "gray-16"
       ],
       "preview_white_point": "true_white",
-      "image_size_limit": 92160,
+      "image_size_limit": 90000,
       "image_upload_supported": true,
       "css": {
         "classes": {
@@ -2552,6 +2552,62 @@
           [
             "--dither-pixel-ratio",
             "1.0"
+          ],
+          [
+            "--ui-scale",
+            "1.0"
+          ],
+          [
+            "--gap-scale",
+            "1.0"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "remarkable_paper_2",
+      "label": "reMarkable 2",
+      "description": "reMarkable 2",
+      "width": 1404,
+      "height": 1872,
+      "colors": 16,
+      "bit_depth": 4,
+      "scale_factor": 1.8,
+      "rotation": 0,
+      "mime_type": "image/png",
+      "offset_x": 0,
+      "offset_y": 0,
+      "kind": "byod",
+      "palette_ids": [
+        "bw",
+        "gray-4",
+        "gray-16"
+      ],
+      "preview_white_point": "true_white",
+      "image_size_limit": 90000,
+      "image_upload_supported": true,
+      "css": {
+        "classes": {
+          "device": "screen--remarkable_paper_2",
+          "size": "screen--lg",
+          "density": "screen--density-2x"
+        },
+        "variables": [
+          [
+            "--screen-w",
+            "780px"
+          ],
+          [
+            "--screen-h",
+            "1040px"
+          ],
+          [
+            "--pixel-ratio",
+            "1.8"
+          ],
+          [
+            "--dither-pixel-ratio",
+            "2.0"
           ],
           [
             "--ui-scale",
