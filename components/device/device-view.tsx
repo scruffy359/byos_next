@@ -18,7 +18,7 @@ import {
 import {
 	FunctionGetPreviewScreenArgs,
 	FunctionGetPreviewScreenUrls,
-} from "@/lib/recipes/render/types";
+} from "@/lib/render/render-annotation-types";
 import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
 import type { Device } from "@/lib/types";

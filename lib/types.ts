@@ -58,6 +58,21 @@ export type Device = {
 	supports_temperature_profile: boolean | null;
 };
 
+/**
+ * Pseudo Device is used to simulate a Device when user chooses
+ * a model/palette when previewing.
+ */
+export type PseudoDevice = Pick<
+	Device,
+	| "id"
+	| "name"
+	| "friendly_id"
+	| "user_id"
+	| "timezone"
+	| "model"
+	| "palette_id"
+>;
+
 export type TemperatureProfile = "default" | "a" | "b" | "c";
 
 export type Playlist = {

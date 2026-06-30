@@ -16,7 +16,7 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { FunctionGetPreviewScreenUrls } from "@/lib/recipes/render/types";
+import { FunctionGetPreviewScreenUrls } from "@/lib/render/render-annotation-types";
 import {
 	DEVICE_SIZE_PRESETS,
 	type DeviceSizePreset,

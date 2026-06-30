@@ -74,7 +74,7 @@ export async function fetchDeviceByApiKey(
 		return null;
 	}
 
-	return device as unknown as Device;
+	return normalizeSelectedDevice(device);
 }
 
 /**

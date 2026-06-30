@@ -24,7 +24,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
 	ResolvePreviewImageUrlParameters,
 	ResolvePreviewImageUrlType,
-} from "@/lib/recipes/render/types";
+} from "@/lib/render/render-annotation-types";
 import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import { FormatValue } from "@/lib/types";
 import { cn } from "@/lib/utils";

@@ -7,11 +7,7 @@ import {
 	getScreenParams,
 	updateScreenParams,
 } from "@/app/actions/screens-params";
-import {
-	createRenderAssociationValuesForSettings,
-	RenderAssociationType,
-	setRenderAssociationCacheEntry,
-} from "@/cache-handlers/render-association-cache-handler";
+import { setRenderAssociationCacheEntry } from "@/cache-handlers/render-association-cache-handler";
 import { PageTemplate } from "@/components/common/page-template";
 import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
 import { RecipePreviewStage } from "@/components/recipes/recipe-preview-stage";
@@ -27,9 +23,13 @@ import {
 	fetchLiquidRecipeSettings,
 } from "@/lib/recipes/liquid-renderer";
 import { getRendererType } from "@/lib/recipes/render/rasterize";
-import { ResolvePreviewImageUrlParameters } from "@/lib/recipes/render/types";
 import { resolveReactRecipe } from "@/lib/recipes/runtime/react";
 import { zodObjectToParamDefinitions } from "@/lib/recipes/zod-form";
+import {
+	RenderAssociationType,
+	ResolvePreviewImageUrlParameters,
+} from "@/lib/render/render-annotation-types";
+import { createRenderAssociationValuesForSettings } from "@/lib/render/render-association";
 import { listModels, listPalettes } from "@/lib/trmnl/registry";
 import { FormatValue } from "@/lib/types";
 import { configuredTimezone } from "@/lib/utils";

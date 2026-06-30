@@ -1,17 +1,19 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import {
-	createErrorRenderAssociationValuesForDevice,
-	createRenderAssociationValuesForDevice,
-	RenderAssociationType,
-	setRenderAssociationCacheEntry,
-} from "@/cache-handlers/render-association-cache-handler";
+import { setRenderAssociationCacheEntry } from "@/cache-handlers/render-association-cache-handler";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { isNoDbMode } from "@/lib/database/utils";
 import { getInitData } from "@/lib/getInitData";
 import { listAllRecipes } from "@/lib/recipes/catalog";
-import { FunctionGetPreviewScreenArgs } from "@/lib/recipes/render/types";
+import {
+	FunctionGetPreviewScreenArgs,
+	RenderAssociationType,
+} from "@/lib/render/render-annotation-types";
+import {
+	createErrorRenderAssociationValuesForDevice,
+	createRenderAssociationValuesForDevice,
+} from "@/lib/render/render-association";
 import { listModels, listPalettes } from "@/lib/trmnl/registry";
 import { DeviceDisplayMode } from "@/lib/types";
 import { getDeviceStatus } from "@/utils/helpers";

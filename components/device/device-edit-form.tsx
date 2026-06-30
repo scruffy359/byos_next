@@ -282,7 +282,7 @@ export default function DeviceEditForm({
 						<div className="grid gap-1.5 sm:grid-cols-3">
 							<MetaRow label="Mode">
 								<span className="capitalize">
-									{editedDevice.display_mode.toLowerCase()}
+									{editedDevice.display_mode?.toLowerCase()}
 								</span>
 							</MetaRow>
 							<MetaRow label="Timezone">
@@ -443,7 +443,7 @@ export default function DeviceEditForm({
 								<ToggleGroup
 									type="single"
 									variant="outline"
-									value={editedDevice.display_mode}
+									value={editedDevice.display_mode ?? undefined}
 									onValueChange={(value) => {
 										if (value) onSelectChange("display_mode", value);
 									}}

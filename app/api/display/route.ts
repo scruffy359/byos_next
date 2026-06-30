@@ -1,7 +1,5 @@
 import {
 	getNewAssociationId,
-	RenderAssociationType,
-	RenderAssociationValues,
 	setCurrentScreenCacheEntry,
 	setRenderAssociationCacheEntry,
 } from "@/cache-handlers/render-association-cache-handler";
@@ -20,6 +18,10 @@ import {
 	buildDeviceImageFilename,
 	buildDeviceImageUrl,
 } from "@/lib/render/device-image-url";
+import {
+	RenderAssociationType,
+	RenderAssociationValues,
+} from "@/lib/render/render-annotation-types";
 import { configuredTimezone } from "@/lib/utils";
 import {
 	buildClaimResponse,

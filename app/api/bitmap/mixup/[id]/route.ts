@@ -1,11 +1,6 @@
 import type { NextRequest } from "next/server";
 import sharp from "sharp";
-import {
-	getRenderAssociatedCacheEntry,
-	RenderAssociationType,
-	resolveAssociationData,
-	resolveDeviceProfile,
-} from "@/cache-handlers/render-association-cache-handler";
+import { getRenderAssociatedCacheEntry } from "@/cache-handlers/render-association-cache-handler";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { getLayoutById, type LayoutSlot } from "@/lib/mixup/constants";
@@ -19,6 +14,11 @@ import { renderDeviceImage } from "@/lib/render/device-image";
 import { stripImageExtension } from "@/lib/render/device-image-url";
 import { renderErrorImage } from "@/lib/render/error-image";
 import { parseImageRequest } from "@/lib/render/image-request";
+import { RenderAssociationType } from "@/lib/render/render-annotation-types";
+import {
+	resolveAssociationData,
+	resolveDeviceProfile,
+} from "@/lib/render/render-association";
 import { FormatValue } from "@/lib/types";
 import { configuredTimezone } from "@/lib/utils";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
@@ -63,7 +63,9 @@ export async function GET(
 		// Resolve the device owner so recipe parameters are scoped to proper user.
 		const resolvedData = await resolveAssociationData(associatedValues);
 		if (!resolvedData) {
-			throw new Error("Required data could not be resolved");
+			throw new Error(
+				"Required render association data could not be resolved.",
+			);
 		}
 		const { userId, device } = resolvedData;
 

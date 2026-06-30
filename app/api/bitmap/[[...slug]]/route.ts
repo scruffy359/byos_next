@@ -1,11 +1,6 @@
 import { connection, type NextRequest } from "next/server";
 import { cache } from "react";
-import {
-	getRenderAssociatedCacheEntry,
-	RenderAssociationType,
-	resolveAssociationData,
-	resolveDeviceProfile,
-} from "@/cache-handlers/render-association-cache-handler";
+import { getRenderAssociatedCacheEntry } from "@/cache-handlers/render-association-cache-handler";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
@@ -21,6 +16,11 @@ import {
 	parseImageRequest,
 	rejectOversizedImageArea,
 } from "@/lib/render/image-request";
+import { RenderAssociationType } from "@/lib/render/render-annotation-types";
+import {
+	resolveAssociationData,
+	resolveDeviceProfile,
+} from "@/lib/render/render-association";
 import {
 	DEFAULT_MODEL_NAME,
 	type DeviceProfile,
