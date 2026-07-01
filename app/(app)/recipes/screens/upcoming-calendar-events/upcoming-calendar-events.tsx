@@ -5,7 +5,7 @@ import {
 } from "@/lib/recipes/constants";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import { createScreenProfile, ScreenProfile } from "@/lib/trmnl/screen-profile";
-import { configuredTimezone } from "@/lib/utils";
+import { configuredLocale, configuredTimezone } from "@/lib/utils";
 import { PreSatori } from "@/utils/pre-satori";
 import getUpcomingCalendarEventsData, {
 	ResponseStatus,
@@ -38,7 +38,7 @@ type FormattedEventDate = {
 };
 
 function formatEventDate(date: Date, timezone: string): FormattedEventDate {
-	const locale = "en-US";
+	const locale = configuredLocale();
 	const now = new Date();
 
 	const dateParts = new Intl.DateTimeFormat(locale, {
@@ -74,7 +74,9 @@ function formatEventDate(date: Date, timezone: string): FormattedEventDate {
 	const relative =
 		diffDays > 0 && diffDays < 7
 			? `in ${diffDays} day${diffDays === 1 ? "" : "s"}`
-			: null;
+			: diffDays === 0
+				? "TODAY"
+				: null;
 
 	return { date: `${month} ${day}`, time, relative };
 }
@@ -136,7 +138,7 @@ export default function UpcomingCalendarEvents({
 		eventCount > eventCountToDisplay ? eventCount - eventCountToDisplay : 0;
 	const displayEvents = events ? events.slice(0, eventCountToDisplay) : [];
 
-	// TODO: all-day vs date
+	// TODO: all-day vs on date
 	// TODO: date -> show as MM/DD, if within 7 days include "in X days".
 	return (
 		<PreSatori width={width} height={height}>

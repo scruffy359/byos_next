@@ -165,6 +165,9 @@ export type RecipeSidebarItem = {
 // Re-export for convenience
 export { DeviceDisplayMode } from "@/lib/mixup/constants";
 
+/**
+ * Format for rendering.
+ */
 export enum FormatValue {
 	bmp = "bmp",
 	png = "png",

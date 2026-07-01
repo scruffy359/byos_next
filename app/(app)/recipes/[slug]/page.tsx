@@ -7,7 +7,6 @@ import {
 	getScreenParams,
 	updateScreenParams,
 } from "@/app/actions/screens-params";
-import { setRenderAssociationCacheEntry } from "@/cache-handlers/render-association-cache-handler";
 import { PageTemplate } from "@/components/common/page-template";
 import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
 import { RecipePreviewStage } from "@/components/recipes/recipe-preview-stage";
@@ -16,7 +15,7 @@ import { ScreenParamsForm } from "@/components/recipes/screen-params-form";
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { withUserScope } from "@/lib/database/scoped-db";
-import { checkDbConnection, isNoDbMode } from "@/lib/database/utils";
+import { checkDbConnection } from "@/lib/database/utils";
 import { listAllRecipes } from "@/lib/recipes/catalog";
 import {
 	customFieldsToParamDefinitions,
@@ -25,52 +24,13 @@ import {
 import { getRendererType } from "@/lib/recipes/render/rasterize";
 import { resolveReactRecipe } from "@/lib/recipes/runtime/react";
 import { zodObjectToParamDefinitions } from "@/lib/recipes/zod-form";
-import { createRenderAssociationValuesForSettings } from "@/lib/render/render-association";
-import {
-	RenderAssociationType,
-	ResolvePreviewImageUrlParameters,
-} from "@/lib/render/render-association-types";
+import { getRecipePreviewImageUrl } from "@/lib/render/render-association";
 import { listModels, listPalettes } from "@/lib/trmnl/registry";
 import { FormatValue } from "@/lib/types";
 import { configuredTimezone } from "@/lib/utils";
 
 export async function generateMetadata() {
 	return {};
-}
-
-export async function getPreviewImageUrl({
-	screenId,
-	modelName,
-	paletteId,
-	orientation,
-}: ResolvePreviewImageUrlParameters): Promise<string> {
-	"use server";
-	const noDb = isNoDbMode();
-
-	const userId = !noDb ? await getCurrentUserId() : null;
-
-	if (!noDb && !userId) {
-		throw Error("Current user could not be determined.");
-	}
-
-	const associationValues = await createRenderAssociationValuesForSettings({
-		type: RenderAssociationType.recipePreview,
-		screenId,
-		renderSettings: {
-			modelName,
-			paletteId,
-			orientation,
-		},
-		recipePreview: {
-			userId,
-		},
-		dataParams: null,
-	});
-
-	// TODO: support direct width/height? or only side-effect of these params.
-	setRenderAssociationCacheEntry(associationValues);
-
-	return associationValues.imageUrl;
 }
 
 async function refreshData(slug: string) {
@@ -236,13 +196,14 @@ export default async function RecipePage({
 					}
 					left={meta.system ? null : <DeleteRecipeButton slug={slug} />}
 				>
+					{/** TODO: remove links on pipelines as directly selecting a slug isn't useful. */}
 					<RecipePreviewStage
 						slug={slug}
 						isPortrait={isPortrait}
 						trmnlModels={trmnlModels}
 						trmnlPalettes={trmnlPalettes}
 						format={formatValue}
-						getPreviewImageUrl={getPreviewImageUrl}
+						getPreviewImageUrl={getRecipePreviewImageUrl}
 						bmpPipeline={
 							<span>
 								JSX → pre-satori → {getRendererType()} PNG → render-bmp →{" "}
@@ -254,8 +215,8 @@ export default async function RecipePage({
 						pngPipeline={
 							<span>
 								JSX → pre-satori → {getRendererType()} PNG →{" "}
-								<Link href={`/api/bitmap/${slug}.bmp`}>
-									/api/bitmap/{slug}.bmp
+								<Link href={`/api/bitmap/${slug}.png`}>
+									/api/bitmap/{slug}.png
 								</Link>
 							</span>
 						}
@@ -355,7 +316,7 @@ export default async function RecipePage({
 					reactPipeline={
 						<span>Liquid → liquidjs → HTML → browser preview</span>
 					}
-					getPreviewImageUrl={getPreviewImageUrl}
+					getPreviewImageUrl={getRecipePreviewImageUrl}
 				/>
 				{hasParams && (
 					<ScreenParamsForm

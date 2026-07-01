@@ -152,6 +152,7 @@ export function RecipePreviewStage({
 				: selectedModel.height
 			: null;
 
+	// TODO: refactor to fix liquid support
 	const formats: {
 		key: FormatValue;
 		pipeline: ReactNode /*node: ReactNode; */;
@@ -234,12 +235,24 @@ export function RecipePreviewStage({
 
 	useEffect(() => {
 		fetchImageUrl({
+			width: simWidth,
+			height: simHeight,
 			screenId: slug,
 			modelName,
-			paletteId: null, // TODO
+			paletteId: selectedPalette?.id ?? null,
 			orientation: isPortrait ? "portrait" : "landscape",
+			format,
 		});
-	}, [fetchImageUrl, modelName, slug, isPortrait]);
+	}, [
+		fetchImageUrl,
+		modelName,
+		slug,
+		isPortrait,
+		simWidth,
+		simHeight,
+		format,
+		selectedPalette,
+	]);
 
 	useEffect(() => {
 		if (activeKey !== "react" || !reactPreviewSrc) return;

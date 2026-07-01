@@ -15,15 +15,21 @@ import {
 	DeviceProfile,
 	getDeviceProfile,
 } from "../trmnl/device-profile";
-import { Device, DeviceDisplayMode, PseudoDevice } from "../types";
+import { Device, DeviceDisplayMode, FormatValue, PseudoDevice } from "../types";
 import { configuredTimezone } from "../utils";
-import { buildDeviceImageUrl } from "./device-image-url";
+import {
+	convertExtensionToMimeType,
+	DefaultImageMimeType,
+	getImageFilenameExtensionFromMimeType,
+	SupportedMimeTypes,
+} from "./device-image-url";
 import {
 	AssociationPreview,
 	AssociationRenderSettings,
 	FunctionGetPreviewScreenArgs,
 	RenderAssociationType,
 	RenderAssociationValues,
+	ResolvePreviewImageUrlParameters,
 } from "./render-association-types";
 
 export const getCurrentScreenAssociation = async (
@@ -59,6 +65,53 @@ export const getCurrentScreenAssociation = async (
 	return associationValues;
 };
 
+const convertFormatToMimeType = (format: FormatValue | null) => {
+	if (!format || format === FormatValue.react) {
+		return null; // should never really get here
+	}
+	return convertExtensionToMimeType(format);
+};
+
+export async function getRecipePreviewImageUrl({
+	screenId,
+	width,
+	height,
+	modelName,
+	paletteId,
+	orientation,
+	format,
+}: ResolvePreviewImageUrlParameters): Promise<string> {
+	"use server";
+	const noDb = isNoDbMode();
+
+	const userId = !noDb ? await getCurrentUserId() : null;
+
+	if (!noDb && !userId) {
+		throw Error("Current user could not be determined.");
+	}
+
+	const associationValues = await createRenderAssociationValuesForSettings({
+		type: RenderAssociationType.recipePreview,
+		screenId,
+		renderSettings: {
+			width,
+			height,
+			modelName,
+			paletteId,
+			orientation,
+			mimeType: convertFormatToMimeType(format),
+		},
+		recipePreview: {
+			userId,
+		},
+		dataParams: null,
+	});
+
+	setRenderAssociationCacheEntry(associationValues);
+
+	return associationValues.imageUrl;
+}
+
 export const getDevicePreviewScreenUrls = async (
 	values: FunctionGetPreviewScreenArgs,
 ): Promise<string[]> => {
@@ -73,7 +126,6 @@ export const getDevicePreviewScreenUrls = async (
 	}
 
 	const { device, playlistScreens, renderSettings } = values;
-	const { modelName, paletteId, orientation } = renderSettings;
 	const isPlaylist = device.display_mode === DeviceDisplayMode.PLAYLIST;
 	const isMixup = device.display_mode === DeviceDisplayMode.MIXUP;
 
@@ -109,11 +161,7 @@ export const getDevicePreviewScreenUrls = async (
 					type: RenderAssociationType.devicePreview,
 					screenId: playlistScreen.screen,
 					device,
-					renderSettings: {
-						modelName,
-						paletteId,
-						orientation,
-					},
+					renderSettings,
 					recipePreview: {
 						userId,
 					},
@@ -144,11 +192,7 @@ export const getDevicePreviewScreenUrls = async (
 			type: RenderAssociationType.recipePreview,
 			screenId: `mixup/${device.mixup_id}`,
 			device,
-			renderSettings: {
-				modelName,
-				paletteId,
-				orientation,
-			},
+			renderSettings,
 			recipePreview: {
 				userId,
 			},
@@ -177,11 +221,7 @@ export const getDevicePreviewScreenUrls = async (
 		type: RenderAssociationType.recipePreview,
 		screenId: device.screen,
 		device,
-		renderSettings: {
-			modelName,
-			paletteId,
-			orientation,
-		},
+		renderSettings,
 		recipePreview: {
 			userId,
 		},
@@ -217,6 +257,7 @@ export const createRenderAssociationValuesForDevice = async ({
 	type,
 	device,
 	screenId,
+	renderSettings,
 	recipePreview,
 	dataParams,
 }: {
@@ -237,11 +278,12 @@ export const createRenderAssociationValuesForDevice = async ({
 
 	const profile = await getDeviceProfile(modelName, paletteId);
 
-	const imageUrl = buildDeviceImageUrl({
-		baseUrl: `/api/bitmap`,
-		imagePath: `${associationId}`,
-		profile,
-	});
+	const mimeType =
+		profile.model.mime_type ?? renderSettings?.mimeType ?? DefaultImageMimeType;
+
+	const extension = getImageFilenameExtensionFromMimeType(mimeType);
+
+	const imageUrl = `/api/bitmap/${associationId}.${extension}`;
 
 	const associationValues: RenderAssociationValues = {
 		associationId,
@@ -249,9 +291,12 @@ export const createRenderAssociationValuesForDevice = async ({
 		imageUrl,
 		screenId,
 		renderSettings: {
+			width: null, // TODO
+			height: null, // TODO
 			modelName,
 			paletteId,
 			orientation: device.screen_orientation ?? "landscape",
+			mimeType: mimeType as SupportedMimeTypes,
 		},
 		device: {
 			id: device.id,
@@ -287,11 +332,12 @@ export const createRenderAssociationValuesForSettings = async ({
 		renderSettings.paletteId,
 	);
 
-	const imageUrl = buildDeviceImageUrl({
-		baseUrl: `/api/bitmap`,
-		imagePath: `${associationId}`,
-		profile,
-	});
+	const mimeType =
+		renderSettings.mimeType ?? profile.model.mime_type ?? DefaultImageMimeType;
+
+	const extension = getImageFilenameExtensionFromMimeType(mimeType);
+
+	const imageUrl = `/api/bitmap/${associationId}.${extension}`;
 
 	const associationValues: RenderAssociationValues = {
 		associationId,

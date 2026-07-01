@@ -8,7 +8,7 @@ import {
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { isNoDbMode } from "@/lib/database/utils";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
-import { buildDeviceImageUrl } from "@/lib/render/device-image-url";
+import { DefaultImageMimeType } from "@/lib/render/device-image-url";
 import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import type { DeviceProfile } from "@/lib/trmnl/types";
 import type { Device } from "@/lib/types";
@@ -23,6 +23,7 @@ import {
 	resolveDeviceProfile,
 } from "./render-association";
 import {
+	AssociationRenderSettings,
 	RenderAssociationType,
 	type RenderAssociationValues,
 } from "./render-association-types";
@@ -52,9 +53,6 @@ jest.mock("@/lib/trmnl/device-profile", () => ({
 }));
 jest.mock("@/lib/utils", () => ({
 	configuredTimezone: jest.fn(),
-}));
-jest.mock("@/lib/render/device-image-url", () => ({
-	buildDeviceImageUrl: jest.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -128,9 +126,12 @@ function makeAssociationValues(
 		imageUrl: "/api/bitmap/assoc-id.bmp",
 		screenId: "my-screen",
 		renderSettings: {
+			width: null,
+			height: null,
 			modelName: "og_plus",
 			paletteId: null,
 			orientation: "landscape",
+			mimeType: DefaultImageMimeType,
 		},
 		device: { id: 1, apiKey: "testApiKey12345678901" },
 		dataParams: null,
@@ -164,7 +165,6 @@ describe("createRenderAssociationValuesForDevice", () => {
 	beforeEach(() => {
 		jest.mocked(getNewAssociationId).mockReturnValue("test-id");
 		jest.mocked(getDeviceProfile).mockResolvedValue(makeProfile());
-		jest.mocked(buildDeviceImageUrl).mockReturnValue("/api/bitmap/test-id.bmp");
 	});
 
 	it("uses DEFAULT_MODEL_NAME when device.model is null", async () => {
@@ -177,6 +177,7 @@ describe("createRenderAssociationValuesForDevice", () => {
 		});
 		expect(getDeviceProfile).toHaveBeenCalledWith("og_plus", null);
 		expect(result.renderSettings.modelName).toBe("og_plus");
+		expect(result.renderSettings.mimeType).toBe("image/bmp");
 	});
 
 	it("uses device.model and device.palette_id when set", async () => {
@@ -188,25 +189,6 @@ describe("createRenderAssociationValuesForDevice", () => {
 			dataParams: null,
 		});
 		expect(getDeviceProfile).toHaveBeenCalledWith("og", "bw");
-	});
-
-	it("passes profile to buildDeviceImageUrl with the generated associationId", async () => {
-		const profile = makeProfile();
-		jest.mocked(getDeviceProfile).mockResolvedValue(profile);
-
-		await createRenderAssociationValuesForDevice({
-			type: RenderAssociationType.devicePreview,
-			device: makeDevice(),
-			screenId: "s",
-			renderSettings: null,
-			dataParams: null,
-		});
-
-		expect(buildDeviceImageUrl).toHaveBeenCalledWith({
-			baseUrl: "/api/bitmap",
-			imagePath: "test-id",
-			profile,
-		});
 	});
 
 	it("sets imageUrl and associationId from helpers", async () => {
@@ -298,18 +280,18 @@ describe("createRenderAssociationValuesForDevice", () => {
 // ---------------------------------------------------------------------------
 
 describe("createRenderAssociationValuesForSettings", () => {
-	const renderSettings = {
-		modelName: "og" as string | null,
-		paletteId: "bw" as string | null,
-		orientation: "portrait" as string | null,
+	const renderSettings: AssociationRenderSettings = {
+		width: null,
+		height: null,
+		modelName: "og",
+		paletteId: "bw",
+		orientation: "portrait",
+		mimeType: DefaultImageMimeType,
 	};
 
 	beforeEach(() => {
 		jest.mocked(getNewAssociationId).mockReturnValue("settings-id");
 		jest.mocked(getDeviceProfile).mockResolvedValue(makeProfile());
-		jest
-			.mocked(buildDeviceImageUrl)
-			.mockReturnValue("/api/bitmap/settings-id.bmp");
 	});
 
 	it("calls getDeviceProfile with renderSettings.modelName and paletteId", async () => {
@@ -377,7 +359,6 @@ describe("createErrorRenderAssociationValuesForDevice", () => {
 	beforeEach(() => {
 		jest.mocked(getNewAssociationId).mockReturnValue("err-id");
 		jest.mocked(getDeviceProfile).mockResolvedValue(makeProfile());
-		jest.mocked(buildDeviceImageUrl).mockReturnValue("/api/bitmap/err-id.bmp");
 	});
 
 	it("uses the error screen ID", async () => {
@@ -454,9 +435,12 @@ describe("resolveAssociationData — recipePreview type", () => {
 			type: RenderAssociationType.recipePreview,
 			recipePreview: { userId: "user-abc" },
 			renderSettings: {
+				width: null,
+				height: null,
 				modelName: "og",
 				paletteId: "bw",
 				orientation: "landscape",
+				mimeType: DefaultImageMimeType,
 			},
 		});
 		const result = await resolveAssociationData(values);
@@ -567,7 +551,6 @@ describe("getCurrentScreenAssociation", () => {
 	beforeEach(() => {
 		jest.mocked(getNewAssociationId).mockReturnValue("new-id");
 		jest.mocked(getDeviceProfile).mockResolvedValue(makeProfile());
-		jest.mocked(buildDeviceImageUrl).mockReturnValue("/api/bitmap/new-id.bmp");
 	});
 
 	it("looks up cache using device.friendly_id", async () => {
@@ -618,7 +601,6 @@ describe("getDevicePreviewScreenUrls", () => {
 		jest.mocked(getCurrentUserId).mockResolvedValue("preview-user");
 		jest.mocked(getNewAssociationId).mockReturnValue("prev-id");
 		jest.mocked(getDeviceProfile).mockResolvedValue(makeProfile());
-		jest.mocked(buildDeviceImageUrl).mockReturnValue("/api/bitmap/prev-id.bmp");
 	});
 
 	it("throws when not in noDb mode and userId cannot be determined", async () => {
@@ -627,7 +609,14 @@ describe("getDevicePreviewScreenUrls", () => {
 			getDevicePreviewScreenUrls({
 				device: makeDevice(),
 				playlistScreens: [],
-				renderSettings: { modelName: null, paletteId: null, orientation: null },
+				renderSettings: {
+					width: null,
+					height: null,
+					modelName: null,
+					paletteId: null,
+					orientation: null,
+					mimeType: null,
+				},
 			}),
 		).rejects.toThrow("Current user could not be determined.");
 	});
@@ -639,7 +628,14 @@ describe("getDevicePreviewScreenUrls", () => {
 			getDevicePreviewScreenUrls({
 				device: makeDevice({ screen: "my-screen" }),
 				playlistScreens: [],
-				renderSettings: { modelName: null, paletteId: null, orientation: null },
+				renderSettings: {
+					width: null,
+					height: null,
+					modelName: null,
+					paletteId: null,
+					orientation: null,
+					mimeType: null,
+				},
 			}),
 		).resolves.toBeDefined();
 	});
@@ -653,7 +649,14 @@ describe("getDevicePreviewScreenUrls", () => {
 			const urls = await getDevicePreviewScreenUrls({
 				device,
 				playlistScreens: [],
-				renderSettings: { modelName: null, paletteId: null, orientation: null },
+				renderSettings: {
+					width: null,
+					height: null,
+					modelName: null,
+					paletteId: null,
+					orientation: null,
+					mimeType: null,
+				},
 			});
 			expect(urls).toHaveLength(1);
 			expect(setRenderAssociationCacheEntry).toHaveBeenCalled();
@@ -670,7 +673,14 @@ describe("getDevicePreviewScreenUrls", () => {
 			const urls = await getDevicePreviewScreenUrls({
 				device,
 				playlistScreens: [{ screen: null as unknown as string, duration: 60 }],
-				renderSettings: { modelName: null, paletteId: null, orientation: null },
+				renderSettings: {
+					width: null,
+					height: null,
+					modelName: null,
+					paletteId: null,
+					orientation: null,
+					mimeType: null,
+				},
 			});
 			expect(urls).toHaveLength(1);
 			const cached = jest.mocked(setRenderAssociationCacheEntry).mock
@@ -679,14 +689,15 @@ describe("getDevicePreviewScreenUrls", () => {
 		});
 
 		it("returns a URL for each valid playlist screen", async () => {
+			jest
+				.mocked(getNewAssociationId)
+				.mockReturnValueOnce("id1")
+				.mockReturnValueOnce("id2");
+
 			const device = makeDevice({
 				display_mode: DeviceDisplayMode.PLAYLIST,
 				playlist_id: "pl-1",
 			});
-			jest
-				.mocked(buildDeviceImageUrl)
-				.mockReturnValueOnce("/api/bitmap/id1.bmp")
-				.mockReturnValueOnce("/api/bitmap/id2.bmp");
 
 			const urls = await getDevicePreviewScreenUrls({
 				device,
@@ -694,7 +705,14 @@ describe("getDevicePreviewScreenUrls", () => {
 					{ screen: "screen-a", duration: 30 },
 					{ screen: "screen-b", duration: 60 },
 				],
-				renderSettings: { modelName: null, paletteId: null, orientation: null },
+				renderSettings: {
+					width: null,
+					height: null,
+					modelName: null,
+					paletteId: null,
+					orientation: null,
+					mimeType: null,
+				},
 			});
 			expect(urls).toHaveLength(2);
 			expect(urls[0]).toBe("/api/bitmap/id1.bmp");
@@ -711,7 +729,14 @@ describe("getDevicePreviewScreenUrls", () => {
 			const urls = await getDevicePreviewScreenUrls({
 				device,
 				playlistScreens: [],
-				renderSettings: { modelName: null, paletteId: null, orientation: null },
+				renderSettings: {
+					width: null,
+					height: null,
+					modelName: null,
+					paletteId: null,
+					orientation: null,
+					mimeType: null,
+				},
 			});
 			expect(urls).toHaveLength(1);
 			const cached = jest.mocked(setRenderAssociationCacheEntry).mock
@@ -727,7 +752,14 @@ describe("getDevicePreviewScreenUrls", () => {
 			const urls = await getDevicePreviewScreenUrls({
 				device,
 				playlistScreens: [],
-				renderSettings: { modelName: null, paletteId: null, orientation: null },
+				renderSettings: {
+					width: null,
+					height: null,
+					modelName: null,
+					paletteId: null,
+					orientation: null,
+					mimeType: null,
+				},
 			});
 			expect(urls).toHaveLength(1);
 			expect(urls[0]).toBe("/api/bitmap/prev-id.bmp");
@@ -746,7 +778,14 @@ describe("getDevicePreviewScreenUrls", () => {
 			const urls = await getDevicePreviewScreenUrls({
 				device,
 				playlistScreens: [],
-				renderSettings: { modelName: null, paletteId: null, orientation: null },
+				renderSettings: {
+					width: null,
+					height: null,
+					modelName: null,
+					paletteId: null,
+					orientation: null,
+					mimeType: null,
+				},
 			});
 			expect(urls).toHaveLength(1);
 			const cached = jest.mocked(setRenderAssociationCacheEntry).mock
@@ -762,7 +801,14 @@ describe("getDevicePreviewScreenUrls", () => {
 			const urls = await getDevicePreviewScreenUrls({
 				device,
 				playlistScreens: [],
-				renderSettings: { modelName: null, paletteId: null, orientation: null },
+				renderSettings: {
+					width: null,
+					height: null,
+					modelName: null,
+					paletteId: null,
+					orientation: null,
+					mimeType: null,
+				},
 			});
 			expect(urls).toHaveLength(1);
 			expect(urls[0]).toBe("/api/bitmap/prev-id.bmp");

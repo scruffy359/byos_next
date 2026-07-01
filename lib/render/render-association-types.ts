@@ -1,10 +1,14 @@
-import { Device } from "../types";
+import { Device, FormatValue } from "../types";
+import { SupportedMimeTypes } from "./device-image-url";
 
 export type ResolvePreviewImageUrlParameters = {
 	screenId: string;
-	modelName: string;
+	width: number | null;
+	height: number | null;
+	modelName: string | null;
 	paletteId: string | null;
-	orientation: string;
+	orientation: string | null;
+	format: FormatValue;
 };
 
 export type ResolvePreviewImageUrlType = (
@@ -14,10 +18,12 @@ export type ResolvePreviewImageUrlType = (
 export type PlaylistScreenArray = { screen: string; duration: number }[];
 
 export type AssociationRenderSettings = {
-	// TODO: width & height?
+	width: number | null;
+	height: number | null;
 	modelName: string | null;
 	paletteId: string | null;
 	orientation: string | null; // why not considered in bitmap logic?
+	mimeType: SupportedMimeTypes | null;
 };
 
 export type FunctionGetPreviewScreenArgs = {

@@ -1,27 +1,86 @@
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
 
+/** @deprecated */
 const IMAGE_EXTENSION_PATTERN = /\.(bmp|png|webp|jpe?g)$/i;
 
-const MIME_EXTENSION: Record<string, string> = {
-	"image/bmp": "bmp",
-	"image/png": "png",
-	"image/webp": "webp",
+const FileExtensionBmp = "bmp";
+const FileExtensionPng = "png";
+const FileExtensionWebp = "webp";
+
+export enum SupportedMimeTypes {
+	ImageBmp = "image/bmp",
+	ImagePng = "image/png",
+	ImageWebp = "image/webp",
+}
+
+export const DefaultImageMimeType = SupportedMimeTypes.ImageBmp;
+
+// Create a reverse mapping object
+const SupportedMimeTypesReverse: Record<string, SupportedMimeTypes> = {};
+for (const key in SupportedMimeTypes) {
+	const value = SupportedMimeTypes[key as keyof typeof SupportedMimeTypes];
+	if (typeof value === "string") {
+		SupportedMimeTypesReverse[value] = key as unknown as SupportedMimeTypes;
+	}
+}
+
+const MIME_EXTENSION: Record<SupportedMimeTypes, string> = {
+	[SupportedMimeTypes.ImageBmp]: FileExtensionBmp,
+	[SupportedMimeTypes.ImagePng]: FileExtensionPng,
+	[SupportedMimeTypes.ImageWebp]: FileExtensionWebp,
+};
+
+const FileExtensionToMimeType: Record<string, SupportedMimeTypes> = {
+	[FileExtensionBmp]: SupportedMimeTypes.ImageBmp,
+	[FileExtensionPng]: SupportedMimeTypes.ImagePng,
+	[FileExtensionWebp]: SupportedMimeTypes.ImageWebp,
+};
+
+export const convertExtensionToMimeType = (
+	extension: string,
+): SupportedMimeTypes => {
+	const result = FileExtensionToMimeType[extension];
+	if (!result) {
+		throw new Error(`File extenstion not supported: ${extension}`);
+	}
+	return result;
 };
 
 export function getImageFilenameExtensionFromMimeType(mimeType: string) {
 	"use client";
-	return MIME_EXTENSION[mimeType] ?? mimeType.split("/").pop() ?? "png";
-}
-
-export function getImageFilenameExtension(profile: DeviceProfile): string {
 	return (
-		MIME_EXTENSION[profile.model.mime_type] ??
-		profile.model.mime_type.split("/").at(-1) ??
-		"bin"
+		MIME_EXTENSION[mimeType as SupportedMimeTypes] ??
+		mimeType.split("/").pop() ??
+		FileExtensionPng
 	);
 }
 
+export const getMimeTypeForProfile = (
+	profile: DeviceProfile,
+): SupportedMimeTypes => {
+	const mimeType = profile.model.mime_type;
+	const result = SupportedMimeTypesReverse[profile.model.mime_type];
+	if (!result) {
+		throw new Error(`Unsupported mime type: ${mimeType}`);
+	}
+	return result;
+};
+
+export function getImageFilenameExtension(profile: DeviceProfile): string {
+	return (
+		MIME_EXTENSION[profile.model.mime_type as SupportedMimeTypes] ??
+		profile.model.mime_type.split("/").at(-1) ??
+		FileExtensionPng
+	);
+}
+
+/**
+ *
+ * @param imagePath
+ * @returns
+ */
 export function stripImageExtension(imagePath: string): string {
+	// TODO use find "." and remove instead of this
 	return imagePath.replace(IMAGE_EXTENSION_PATTERN, "");
 }
 
