@@ -23,9 +23,9 @@ import {
 	resolveDeviceProfile,
 } from "./render-association";
 import {
-	AssociationRenderSettings,
 	RenderAssociationType,
 	type RenderAssociationValues,
+	RenderHints,
 } from "./render-association-types";
 
 // ---------------------------------------------------------------------------
@@ -125,7 +125,7 @@ function makeAssociationValues(
 		type: RenderAssociationType.devicePreview,
 		imageUrl: "/api/bitmap/assoc-id.bmp",
 		screenId: "my-screen",
-		renderSettings: {
+		renderHints: {
 			width: null,
 			height: null,
 			modelName: "og_plus",
@@ -172,12 +172,12 @@ describe("createRenderAssociationValuesForDevice", () => {
 			type: RenderAssociationType.devicePreview,
 			device: makeDevice({ model: null }),
 			screenId: "s",
-			renderSettings: null,
+			renderHints: null,
 			dataParams: null,
 		});
 		expect(getDeviceProfile).toHaveBeenCalledWith("og_plus", null);
-		expect(result.renderSettings.modelName).toBe("og_plus");
-		expect(result.renderSettings.mimeType).toBe("image/bmp");
+		expect(result.renderHints.modelName).toBe("og_plus");
+		expect(result.renderHints.mimeType).toBe("image/bmp");
 	});
 
 	it("uses device.model and device.palette_id when set", async () => {
@@ -185,7 +185,7 @@ describe("createRenderAssociationValuesForDevice", () => {
 			type: RenderAssociationType.devicePreview,
 			device: makeDevice({ model: "og", palette_id: "bw" }),
 			screenId: "s",
-			renderSettings: null,
+			renderHints: null,
 			dataParams: null,
 		});
 		expect(getDeviceProfile).toHaveBeenCalledWith("og", "bw");
@@ -196,7 +196,7 @@ describe("createRenderAssociationValuesForDevice", () => {
 			type: RenderAssociationType.devicePreview,
 			device: makeDevice(),
 			screenId: "s",
-			renderSettings: null,
+			renderHints: null,
 			dataParams: null,
 		});
 		expect(result.associationId).toBe("test-id");
@@ -208,10 +208,10 @@ describe("createRenderAssociationValuesForDevice", () => {
 			type: RenderAssociationType.devicePreview,
 			device: makeDevice({ screen_orientation: null }),
 			screenId: "s",
-			renderSettings: null,
+			renderHints: null,
 			dataParams: null,
 		});
-		expect(result.renderSettings.orientation).toBe("landscape");
+		expect(result.renderHints.orientation).toBe("landscape");
 	});
 
 	it("uses device.screen_orientation when set", async () => {
@@ -219,10 +219,10 @@ describe("createRenderAssociationValuesForDevice", () => {
 			type: RenderAssociationType.devicePreview,
 			device: makeDevice({ screen_orientation: "portrait" }),
 			screenId: "s",
-			renderSettings: null,
+			renderHints: null,
 			dataParams: null,
 		});
-		expect(result.renderSettings.orientation).toBe("portrait");
+		expect(result.renderHints.orientation).toBe("portrait");
 	});
 
 	it("sets device.id and device.apiKey from the device", async () => {
@@ -230,7 +230,7 @@ describe("createRenderAssociationValuesForDevice", () => {
 			type: RenderAssociationType.devicePreview,
 			device: makeDevice({ id: 42, api_key: "myApiKey" }),
 			screenId: "s",
-			renderSettings: null,
+			renderHints: null,
 			dataParams: null,
 		});
 		expect(result.device).toEqual({ id: 42, apiKey: "myApiKey" });
@@ -241,7 +241,7 @@ describe("createRenderAssociationValuesForDevice", () => {
 			type: RenderAssociationType.display,
 			device: makeDevice(),
 			screenId: "my-screen",
-			renderSettings: null,
+			renderHints: null,
 			dataParams: { errorMessage: "oops" },
 		});
 		expect(result.screenId).toBe("my-screen");
@@ -255,7 +255,7 @@ describe("createRenderAssociationValuesForDevice", () => {
 				type: RenderAssociationType.recipePreview,
 				device: makeDevice(),
 				screenId: "s",
-				renderSettings: null,
+				renderHints: null,
 				dataParams: null,
 			}),
 		).rejects.toThrow("Association value missing 'recipePreview'");
@@ -267,7 +267,7 @@ describe("createRenderAssociationValuesForDevice", () => {
 				type: RenderAssociationType.recipePreview,
 				device: makeDevice(),
 				screenId: "s",
-				renderSettings: null,
+				renderHints: null,
 				recipePreview: { userId: "u1" },
 				dataParams: null,
 			}),
@@ -280,7 +280,7 @@ describe("createRenderAssociationValuesForDevice", () => {
 // ---------------------------------------------------------------------------
 
 describe("createRenderAssociationValuesForSettings", () => {
-	const renderSettings: AssociationRenderSettings = {
+	const renderHints: RenderHints = {
 		width: null,
 		height: null,
 		modelName: "og",
@@ -294,11 +294,11 @@ describe("createRenderAssociationValuesForSettings", () => {
 		jest.mocked(getDeviceProfile).mockResolvedValue(makeProfile());
 	});
 
-	it("calls getDeviceProfile with renderSettings.modelName and paletteId", async () => {
+	it("calls getDeviceProfile with renderHints.modelName and paletteId", async () => {
 		await createRenderAssociationValuesForSettings({
 			type: RenderAssociationType.recipePreview,
 			screenId: "s",
-			renderSettings,
+			renderHints: renderHints,
 			recipePreview: { userId: "u1" },
 			dataParams: null,
 		});
@@ -310,22 +310,22 @@ describe("createRenderAssociationValuesForSettings", () => {
 		const result = await createRenderAssociationValuesForSettings({
 			type: RenderAssociationType.recipePreview,
 			screenId: "screen-1",
-			renderSettings,
+			renderHints: renderHints,
 			recipePreview: preview,
 			dataParams: null,
 		});
 		expect(result.recipePreview).toEqual(preview);
 	});
 
-	it("passes renderSettings through to the result", async () => {
+	it("passes renderHints through to the result", async () => {
 		const result = await createRenderAssociationValuesForSettings({
 			type: RenderAssociationType.recipePreview,
 			screenId: "s",
-			renderSettings,
+			renderHints: renderHints,
 			recipePreview: { userId: "u1" },
 			dataParams: null,
 		});
-		expect(result.renderSettings).toEqual(renderSettings);
+		expect(result.renderHints).toEqual(renderHints);
 	});
 
 	it("throws when type is recipePreview and recipePreview is missing", async () => {
@@ -333,7 +333,7 @@ describe("createRenderAssociationValuesForSettings", () => {
 			createRenderAssociationValuesForSettings({
 				type: RenderAssociationType.recipePreview,
 				screenId: "s",
-				renderSettings,
+				renderHints: renderHints,
 				dataParams: null,
 			}),
 		).rejects.toThrow("Association value missing 'recipePreview'");
@@ -344,7 +344,7 @@ describe("createRenderAssociationValuesForSettings", () => {
 			createRenderAssociationValuesForSettings({
 				type: RenderAssociationType.devicePreview,
 				screenId: "s",
-				renderSettings,
+				renderHints: renderHints,
 				dataParams: null,
 			}),
 		).resolves.toBeDefined();
@@ -430,26 +430,6 @@ describe("resolveAssociationData — recipePreview type", () => {
 		jest.mocked(configuredTimezone).mockReturnValue("Europe/London");
 	});
 
-	it("returns a pseudo device with the userId", async () => {
-		const values = makeAssociationValues({
-			type: RenderAssociationType.recipePreview,
-			recipePreview: { userId: "user-abc" },
-			renderSettings: {
-				width: null,
-				height: null,
-				modelName: "og",
-				paletteId: "bw",
-				orientation: "landscape",
-				mimeType: DefaultImageMimeType,
-			},
-		});
-		const result = await resolveAssociationValues(values);
-		expect(result).not.toBeNull();
-		expect(result?.userId).toBe("user-abc");
-		expect(result?.device.user_id).toBe("user-abc");
-		expect(result?.device.name).toBe("PseudoPreviewDevice");
-	});
-
 	it("uses configuredTimezone() for internalValues.$timezone", async () => {
 		const result = await resolveAssociationValues(
 			makeAssociationValues({
@@ -516,20 +496,22 @@ describe("resolveAssociationData — display type", () => {
 
 	it("returns null when device is not found", async () => {
 		jest.mocked(fetchDeviceByApiKey).mockResolvedValue(null);
-		const result = await resolveAssociationValues(
-			makeAssociationValues({ type: RenderAssociationType.display }),
-		);
-		expect(result).toBeNull();
+		await expect(
+			resolveAssociationValues(
+				makeAssociationValues({ type: RenderAssociationType.display }),
+			),
+		).rejects.toThrow("Device not found with apiKey.");
 	});
 
 	it("returns null when device has no user_id", async () => {
 		jest
 			.mocked(fetchDeviceByApiKey)
 			.mockResolvedValue(makeDevice({ user_id: null }));
-		const result = await resolveAssociationValues(
-			makeAssociationValues({ type: RenderAssociationType.display }),
-		);
-		expect(result).toBeNull();
+		await expect(
+			resolveAssociationValues(
+				makeAssociationValues({ type: RenderAssociationType.display }),
+			),
+		).rejects.toThrow("Device is not assigned a user ID.");
 	});
 
 	it("returns userId, the fetched device, and device.timezone", async () => {
@@ -609,7 +591,7 @@ describe("getDevicePreviewScreenUrls", () => {
 			getDevicePreviewScreenUrls({
 				device: makeDevice(),
 				playlistScreens: [],
-				renderSettings: {
+				renderHints: {
 					width: null,
 					height: null,
 					modelName: null,
@@ -628,7 +610,7 @@ describe("getDevicePreviewScreenUrls", () => {
 			getDevicePreviewScreenUrls({
 				device: makeDevice({ screen: "my-screen" }),
 				playlistScreens: [],
-				renderSettings: {
+				renderHints: {
 					width: null,
 					height: null,
 					modelName: null,
@@ -649,7 +631,7 @@ describe("getDevicePreviewScreenUrls", () => {
 			const urls = await getDevicePreviewScreenUrls({
 				device,
 				playlistScreens: [],
-				renderSettings: {
+				renderHints: {
 					width: null,
 					height: null,
 					modelName: null,
@@ -673,7 +655,7 @@ describe("getDevicePreviewScreenUrls", () => {
 			const urls = await getDevicePreviewScreenUrls({
 				device,
 				playlistScreens: [{ screen: null as unknown as string, duration: 60 }],
-				renderSettings: {
+				renderHints: {
 					width: null,
 					height: null,
 					modelName: null,
@@ -705,7 +687,7 @@ describe("getDevicePreviewScreenUrls", () => {
 					{ screen: "screen-a", duration: 30 },
 					{ screen: "screen-b", duration: 60 },
 				],
-				renderSettings: {
+				renderHints: {
 					width: null,
 					height: null,
 					modelName: null,
@@ -729,7 +711,7 @@ describe("getDevicePreviewScreenUrls", () => {
 			const urls = await getDevicePreviewScreenUrls({
 				device,
 				playlistScreens: [],
-				renderSettings: {
+				renderHints: {
 					width: null,
 					height: null,
 					modelName: null,
@@ -752,7 +734,7 @@ describe("getDevicePreviewScreenUrls", () => {
 			const urls = await getDevicePreviewScreenUrls({
 				device,
 				playlistScreens: [],
-				renderSettings: {
+				renderHints: {
 					width: null,
 					height: null,
 					modelName: null,
@@ -778,7 +760,7 @@ describe("getDevicePreviewScreenUrls", () => {
 			const urls = await getDevicePreviewScreenUrls({
 				device,
 				playlistScreens: [],
-				renderSettings: {
+				renderHints: {
 					width: null,
 					height: null,
 					modelName: null,
@@ -801,7 +783,7 @@ describe("getDevicePreviewScreenUrls", () => {
 			const urls = await getDevicePreviewScreenUrls({
 				device,
 				playlistScreens: [],
-				renderSettings: {
+				renderHints: {
 					width: null,
 					height: null,
 					modelName: null,

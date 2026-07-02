@@ -220,7 +220,7 @@ export async function GET(request: Request) {
 			type: RenderAssociationType.display,
 			imageUrl,
 			screenId: screenToDisplay,
-			renderSettings: {
+			renderHints: {
 				modelName: device.model,
 				paletteId: device.palette_id,
 				orientation: device.screen_orientation ?? "landscape",

@@ -18,7 +18,7 @@ import {
 import { renderErrorImage } from "@/lib/render/error-image";
 import { parseImageRequest } from "@/lib/render/image-request";
 import {
-	getDefaultRenderSettings,
+	getDefaultRenderHints,
 	resolveAssociationValues,
 } from "@/lib/render/render-association";
 import { RenderAssociationType } from "@/lib/render/render-association-types";
@@ -67,14 +67,14 @@ export async function GET(
 				"Required render association data could not be resolved.",
 			);
 		}
-		const { userId, device, renderSettings, renderDataValues } =
+		const { userId, device, renderHints, renderDataValues } =
 			resolvedAssociationValues;
 
 		if (!userId) {
 			return new Response("Access token is required", { status: 401 });
 		}
 
-		const { width, height } = renderSettings;
+		const { width, height } = renderHints;
 
 		//		const profile = await resolveDeviceProfile(device);
 
@@ -164,7 +164,7 @@ export async function GET(
 		// Dispatch on profile MIME — model/palette_id are URL query params, so
 		// the same URL always picks the same renderer.
 		const image =
-			associatedValues.renderSettings.mimeType === SupportedMimeTypes.ImageBmp
+			associatedValues.renderHints.mimeType === SupportedMimeTypes.ImageBmp
 				? {
 						buffer: await renderBmp(compositedPng, {
 							ditheringMethod: DitheringMethod.ATKINSON,
@@ -177,18 +177,18 @@ export async function GET(
 					}
 				: await renderDeviceImage({
 						png: compositedPng,
-						profile: renderSettings.profile,
+						profile: renderHints.profile,
 					});
 
 		return imageResponse(image);
 	} catch (error) {
 		logger.error("Error generating mixup image:", error);
-		const renderSettings = await getDefaultRenderSettings();
+		const renderHints = await getDefaultRenderHints();
 		const message =
 			error instanceof Error ? error.message : "Error generating image";
 		const image = await renderErrorImage({
 			message,
-			renderSettings,
+			renderHints,
 		});
 		return imageResponse(image, 500);
 	}

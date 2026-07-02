@@ -27,10 +27,13 @@ function makeValues(
 		type: RenderAssociationType.display,
 		imageUrl: "/api/bitmap/test-id.bmp",
 		screenId: "my-screen",
-		renderSettings: {
+		renderHints: {
+			width: null,
+			height: null,
 			modelName: "og_plus",
 			paletteId: null,
 			orientation: "landscape",
+			mimeType: null,
 		},
 		device: { id: 1, apiKey: "test-api-key" },
 		dataParams: null,

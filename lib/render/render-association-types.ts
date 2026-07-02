@@ -4,7 +4,7 @@ import { SupportedMimeTypes } from "./device-image-url";
 
 export type ResolvePreviewImageUrlParameters = {
 	screenId: string;
-	renderSettings: AssociationRenderSettings | null;
+	renderHints: RenderHints | null;
 };
 
 export type ResolvePreviewImageUrlType = (
@@ -14,11 +14,11 @@ export type ResolvePreviewImageUrlType = (
 export type PlaylistScreenArray = { screen: string; duration: number }[];
 
 /**
- * Render settings for the association.
+ * Rendering hints for the association.
  * NOTE: width and height are always supplied in the device's "landscape"
  * orientation.
  */
-export type AssociationRenderSettings = {
+export type RenderHints = {
 	/** An override to the model's width. */
 	width: number | null;
 	/** An override to the model's height. */
@@ -38,17 +38,18 @@ type RequiredNotNull<T> = {
 };
 
 /**
- * Same as `AssociationRenderSettings`, but all values are required to
+ * Same as `RenderHints`, but all values are required to
  * by non-null and the width/height are returned with orientation will
  * rotate original width/height if orientation is "portrait".
  */
-export type ResolvedRenderSettings =
-	RequiredNotNull<AssociationRenderSettings> & { profile: DeviceProfile };
+export type ResolvedRenderHints = RequiredNotNull<RenderHints> & {
+	profile: DeviceProfile;
+};
 
 export type FunctionGetPreviewScreenArgs = {
 	device: Device;
 	playlistScreens: PlaylistScreenArray;
-	renderSettings: AssociationRenderSettings;
+	renderHints: RenderHints;
 };
 
 export type FunctionGetPreviewScreenUrls = (
@@ -72,7 +73,7 @@ export type RenderAssociationValues = {
 	type: RenderAssociationType;
 	imageUrl: string;
 	screenId: string;
-	renderSettings: AssociationRenderSettings;
+	renderHints: RenderHints;
 	/** Information about the device when type is "display" or "device-preview" */
 	device?: {
 		id: number;

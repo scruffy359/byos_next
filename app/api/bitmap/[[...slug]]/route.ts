@@ -17,7 +17,7 @@ import {
 	rejectOversizedImageArea,
 } from "@/lib/render/image-request";
 import {
-	getDefaultRenderSettings,
+	getDefaultRenderHints,
 	resolveAssociationValues,
 } from "@/lib/render/render-association";
 import { RenderAssociationType } from "@/lib/render/render-association-types";
@@ -46,7 +46,6 @@ export async function GET(
 		const associatedValues = await getRenderAssociatedCacheEntry(associationId);
 
 		console.log("GET /api/bitmap", {
-			recipeSlug,
 			associationId,
 			associatedValues,
 		});
@@ -79,13 +78,13 @@ export async function GET(
 		}
 		const {
 			userId,
-			renderSettings: resolvedRenderSettings,
+			renderHints: resolvedRenderHints,
 			renderDataValues,
 		} = resolvedValues;
 
 		// TODO: deprecate imageRequest
 
-		const { width, height, profile } = resolvedRenderSettings;
+		const { width, height, profile } = resolvedRenderHints;
 
 		logger.info(
 			`Bitmap request for: '${bitmapPath}', screen '${screenId}' with ${imageRequest.grayscaleLevels} gray levels`,
@@ -103,7 +102,7 @@ export async function GET(
 				"An unknown display error has occurred.";
 			const image = await renderErrorImage({
 				message: errorMessage,
-				renderSettings: resolvedRenderSettings,
+				renderHints: resolvedRenderHints,
 			});
 			return new Response(new Uint8Array(image.buffer), {
 				headers: getImageResponseHeaders(image),
@@ -112,7 +111,7 @@ export async function GET(
 
 		// Profile + extension are both pinned by the URL (model and palette_id
 		// are query params), so dispatch on profile MIME alone.
-		if (resolvedRenderSettings.mimeType !== "image/bmp") {
+		if (resolvedRenderHints.mimeType !== "image/bmp") {
 			const oversized = rejectOversizedImageArea(width, height);
 			if (oversized) return oversized;
 			const image = await renderRecipeForDevice({
@@ -129,7 +128,7 @@ export async function GET(
 				logger.warn(`Failed to generate device image for ${recipeSlug}`);
 				const errorImage = await renderErrorImage({
 					message: `Could not render ${recipeSlug}`,
-					renderSettings: resolvedRenderSettings,
+					renderHints: resolvedRenderHints,
 				});
 				return new Response(new Uint8Array(errorImage.buffer), {
 					status: 500,
@@ -166,7 +165,7 @@ export async function GET(
 			logger.warn(`Failed to generate bitmap for ${recipeSlug}`);
 			const errorImage = await renderErrorImage({
 				message: `Could not render ${recipeSlug}`,
-				renderSettings: resolvedRenderSettings,
+				renderHints: resolvedRenderHints,
 			});
 			return new Response(new Uint8Array(errorImage.buffer), {
 				status: 500,
@@ -182,10 +181,10 @@ export async function GET(
 		});
 	} catch (error) {
 		logger.error("Error generating image:", error);
-		const renderSettings = await getDefaultRenderSettings();
+		const renderHints = await getDefaultRenderHints();
 		const errorImage = await renderErrorImage({
 			message: error instanceof Error ? error.message : "Image render failed",
-			renderSettings,
+			renderHints: renderHints,
 		});
 		return new Response(new Uint8Array(errorImage.buffer), {
 			status: 500,

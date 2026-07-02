@@ -92,6 +92,7 @@ export async function updateScreenParams(
 				.execute(),
 		);
 		revalidatePath(`/recipes/${slug}`);
+		// TODO: remove?
 		revalidatePath(`/api/bitmap/${slug}.bmp`);
 		return { success: true };
 	} catch (error) {

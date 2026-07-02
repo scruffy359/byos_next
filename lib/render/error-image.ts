@@ -4,11 +4,11 @@ import {
 	type RenderDeviceImageResult,
 	renderDeviceImage,
 } from "./device-image";
-import { ResolvedRenderSettings } from "./render-association-types";
+import { ResolvedRenderHints } from "./render-association-types";
 
 type RenderErrorImageOptions = {
 	message: string;
-	renderSettings: ResolvedRenderSettings;
+	renderHints: ResolvedRenderHints;
 };
 
 function escapeXml(value: string): string {
@@ -122,11 +122,11 @@ async function renderErrorPng(message: string, width: number, height: number) {
 
 export async function renderErrorImage({
 	message,
-	renderSettings,
+	renderHints,
 }: RenderErrorImageOptions): Promise<RenderDeviceImageResult> {
-	const { width, height, profile } = renderSettings;
+	const { width, height, profile } = renderHints;
 	const png = await renderErrorPng(message, width, height);
-	if (renderSettings.mimeType !== "image/bmp") {
+	if (renderHints.mimeType !== "image/bmp") {
 		return renderDeviceImage({
 			png,
 			profile: {

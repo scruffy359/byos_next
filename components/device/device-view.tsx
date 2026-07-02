@@ -189,7 +189,7 @@ export default function DeviceView({
 		fetchScreenUrls({
 			device,
 			playlistScreens,
-			renderSettings: {
+			renderHints: {
 				width: deviceWidth,
 				height: deviceHeight,
 				modelName: selectedModel?.name,

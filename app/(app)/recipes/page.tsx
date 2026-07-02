@@ -15,7 +15,7 @@ import { getRecipePreviewImageUrl } from "@/lib/render/render-association";
 const RecipeCard = async ({ recipe }: { recipe: CatalogRecipe }) => {
 	const imageUrl = await getRecipePreviewImageUrl({
 		screenId: recipe.slug,
-		renderSettings: {
+		renderHints: {
 			width: DEFAULT_IMAGE_WIDTH,
 			height: DEFAULT_IMAGE_HEIGHT,
 			modelName: null,

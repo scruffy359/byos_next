@@ -197,6 +197,7 @@ export default function DeviceEditForm({
 		!!editedDevice.playlist_id;
 	const isScreenMissing = !editedDevice.screen && !isMixup && !isPlaylist;
 
+	// TODO: render cache
 	const heroSrc =
 		selectedModel && !hasUnknownModel && !isScreenMissing
 			? isMixup

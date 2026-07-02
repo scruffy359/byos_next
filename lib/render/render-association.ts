@@ -29,11 +29,11 @@ import {
 } from "./device-image-url";
 import {
 	AssociationPreview,
-	AssociationRenderSettings,
 	FunctionGetPreviewScreenArgs,
 	RenderAssociationType,
 	RenderAssociationValues,
-	ResolvedRenderSettings,
+	RenderHints,
+	ResolvedRenderHints,
 	ResolvePreviewImageUrlParameters,
 } from "./render-association-types";
 
@@ -79,7 +79,7 @@ const convertFormatToMimeType = (format: FormatValue | null) => {
 
 export async function getRecipePreviewImageUrl({
 	screenId,
-	renderSettings,
+	renderHints,
 }: ResolvePreviewImageUrlParameters): Promise<string> {
 	"use server";
 	const noDb = isNoDbMode();
@@ -90,20 +90,20 @@ export async function getRecipePreviewImageUrl({
 		throw Error("Current user could not be determined.");
 	}
 
-	const updatedRenderSettings: AssociationRenderSettings = {
-		width: renderSettings?.width ?? null,
-		height: renderSettings?.height ?? null,
-		modelName: renderSettings?.modelName ?? null,
-		paletteId: renderSettings?.paletteId ?? null,
-		orientation: renderSettings?.orientation ?? null,
-		mimeType: renderSettings?.mimeType ?? DefaultImageMimeType,
+	const updatedRenderHints: RenderHints = {
+		width: renderHints?.width ?? null,
+		height: renderHints?.height ?? null,
+		modelName: renderHints?.modelName ?? null,
+		paletteId: renderHints?.paletteId ?? null,
+		orientation: renderHints?.orientation ?? null,
+		mimeType: renderHints?.mimeType ?? DefaultImageMimeType,
 	};
 
 	//TODO convertFormatToMimeType(format);
 	const associationValues = await createRenderAssociationValuesForSettings({
 		type: RenderAssociationType.recipePreview,
 		screenId,
-		renderSettings: updatedRenderSettings,
+		renderHints: updatedRenderHints,
 		recipePreview: {
 			userId,
 		},
@@ -128,7 +128,7 @@ export const getDevicePreviewScreenUrls = async (
 		throw Error("Current user could not be determined.");
 	}
 
-	const { device, playlistScreens, renderSettings } = values;
+	const { device, playlistScreens, renderHints } = values;
 	const isPlaylist = device.display_mode === DeviceDisplayMode.PLAYLIST;
 	const isMixup = device.display_mode === DeviceDisplayMode.MIXUP;
 
@@ -164,7 +164,7 @@ export const getDevicePreviewScreenUrls = async (
 					type: RenderAssociationType.devicePreview,
 					screenId: playlistScreen.screen,
 					device,
-					renderSettings,
+					renderHints,
 					recipePreview: {
 						userId,
 					},
@@ -195,7 +195,7 @@ export const getDevicePreviewScreenUrls = async (
 			type: RenderAssociationType.recipePreview,
 			screenId: `mixup/${device.mixup_id}`,
 			device,
-			renderSettings,
+			renderHints,
 			recipePreview: {
 				userId,
 			},
@@ -224,7 +224,7 @@ export const getDevicePreviewScreenUrls = async (
 		type: RenderAssociationType.recipePreview,
 		screenId: device.screen,
 		device,
-		renderSettings,
+		renderHints,
 		recipePreview: {
 			userId,
 		},
@@ -249,7 +249,7 @@ export const createErrorRenderAssociationValuesForDevice = async ({
 		type,
 		device,
 		screenId: ScreenIdError,
-		renderSettings: null,
+		renderHints: null,
 		dataParams: {
 			errorMessage,
 		},
@@ -260,14 +260,14 @@ export const createRenderAssociationValuesForDevice = async ({
 	type,
 	device,
 	screenId,
-	renderSettings,
+	renderHints,
 	recipePreview,
 	dataParams,
 }: {
 	type: RenderAssociationType;
 	screenId: string;
 	device: Device;
-	renderSettings: AssociationRenderSettings | null;
+	renderHints: RenderHints | null;
 	recipePreview?: AssociationPreview;
 	dataParams: Record<string, unknown> | null;
 }) => {
@@ -282,7 +282,7 @@ export const createRenderAssociationValuesForDevice = async ({
 	const profile = await getDeviceProfile(modelName, paletteId);
 
 	const mimeType =
-		profile.model.mime_type ?? renderSettings?.mimeType ?? DefaultImageMimeType;
+		profile.model.mime_type ?? renderHints?.mimeType ?? DefaultImageMimeType;
 
 	const extension = getImageFilenameExtensionFromMimeType(mimeType);
 
@@ -293,7 +293,7 @@ export const createRenderAssociationValuesForDevice = async ({
 		type,
 		imageUrl,
 		screenId,
-		renderSettings: {
+		renderHints: {
 			width: null, // TODO
 			height: null, // TODO
 			modelName,
@@ -314,13 +314,13 @@ export const createRenderAssociationValuesForDevice = async ({
 export const createRenderAssociationValuesForSettings = async ({
 	type,
 	screenId,
-	renderSettings,
+	renderHints,
 	recipePreview,
 	dataParams,
 }: {
 	type: RenderAssociationType;
 	screenId: string;
-	renderSettings: Required<AssociationRenderSettings>;
+	renderHints: Required<RenderHints>;
 	recipePreview?: AssociationPreview;
 	dataParams: Record<string, unknown> | null;
 }) => {
@@ -331,12 +331,12 @@ export const createRenderAssociationValuesForSettings = async ({
 	const associationId = getNewAssociationId();
 
 	const profile = await getDeviceProfile(
-		renderSettings.modelName,
-		renderSettings.paletteId,
+		renderHints.modelName,
+		renderHints.paletteId,
 	);
 
 	const mimeType =
-		renderSettings.mimeType ?? profile.model.mime_type ?? DefaultImageMimeType;
+		renderHints.mimeType ?? profile.model.mime_type ?? DefaultImageMimeType;
 
 	const extension = getImageFilenameExtensionFromMimeType(mimeType);
 
@@ -347,7 +347,7 @@ export const createRenderAssociationValuesForSettings = async ({
 		type,
 		imageUrl,
 		screenId: screenId,
-		renderSettings,
+		renderHints,
 		recipePreview,
 		dataParams,
 	};
@@ -358,7 +358,7 @@ export const createRenderAssociationValuesForSettings = async ({
 type ResolvedAssociationValues = {
 	userId: string;
 	device: Device | null;
-	renderSettings: ResolvedRenderSettings;
+	renderHints: ResolvedRenderHints;
 	renderDataValues: {
 		$timezone: string;
 	};
@@ -370,7 +370,7 @@ export async function resolveAssociationValues(
 	const {
 		type: associationType,
 		device: associationDevice,
-		renderSettings,
+		renderHints,
 		recipePreview: preview,
 	} = associatedValues;
 
@@ -387,15 +387,15 @@ export async function resolveAssociationValues(
 		}
 
 		// create Pseudo Preview Device
-		const resolvedRenderSettings = await getResolvedRenderSettings({
-			renderSettings,
+		const resolvedRenderHints = await getResolvedRenderHints({
+			renderHints,
 			device: null,
 		});
 
 		return {
 			userId,
 			device: null,
-			renderSettings: resolvedRenderSettings,
+			renderHints: resolvedRenderHints,
 			renderDataValues: {
 				$timezone: configuredTimezone(),
 			},
@@ -418,15 +418,15 @@ export async function resolveAssociationValues(
 		throw new Error("Device is not assigned a user ID.");
 	}
 
-	const resolvedRenderSettings = await getResolvedRenderSettings({
-		renderSettings,
+	const resolvedRenderHints = await getResolvedRenderHints({
+		renderHints,
 		device,
 	});
 
 	return {
 		userId: device.user_id,
 		device,
-		renderSettings: resolvedRenderSettings,
+		renderHints: resolvedRenderHints,
 		renderDataValues: {
 			$timezone: device.timezone ?? configuredTimezone(),
 		},
@@ -443,49 +443,48 @@ export async function resolveDeviceProfile(
 	return getDeviceProfile(modelName, paletteId);
 }
 
-export const getDefaultRenderSettings =
-	async (): Promise<ResolvedRenderSettings> => {
-		return getResolvedRenderSettings({
-			renderSettings: {
-				width: null,
-				height: null,
-				modelName: DEFAULT_MODEL_NAME,
-				paletteId: null,
-				orientation: "landscape",
-				mimeType: DefaultImageMimeType,
-			},
-			device: null,
-		});
-	};
+export const getDefaultRenderHints = async (): Promise<ResolvedRenderHints> => {
+	return getResolvedRenderHints({
+		renderHints: {
+			width: null,
+			height: null,
+			modelName: DEFAULT_MODEL_NAME,
+			paletteId: null,
+			orientation: "landscape",
+			mimeType: DefaultImageMimeType,
+		},
+		device: null,
+	});
+};
 
-const getResolvedRenderSettings = async ({
-	renderSettings,
+const getResolvedRenderHints = async ({
+	renderHints,
 	device,
 }: {
-	renderSettings: AssociationRenderSettings;
+	renderHints: RenderHints;
 	device: Device | null;
-}): Promise<ResolvedRenderSettings> => {
-	const resolvedModelName = renderSettings.mimeType ?? DEFAULT_MODEL_NAME;
-	const resolvedPaletteId = renderSettings.paletteId;
+}): Promise<ResolvedRenderHints> => {
+	const resolvedModelName = renderHints.mimeType ?? DEFAULT_MODEL_NAME;
+	const resolvedPaletteId = renderHints.paletteId;
 
 	const profile = await getDeviceProfile(resolvedModelName, resolvedPaletteId);
 
 	return {
 		width:
-			renderSettings.width ??
+			renderHints.width ??
 			device?.screen_width ??
 			profile.model.width ??
 			DEFAULT_IMAGE_WIDTH,
 		height:
-			renderSettings.height ??
+			renderHints.height ??
 			device?.screen_height ??
 			profile.model.height ??
 			DEFAULT_IMAGE_HEIGHT,
 		modelName: resolvedModelName,
 		paletteId: resolvedPaletteId ?? "", // TODO allow null?
 		orientation:
-			renderSettings.orientation ?? device?.screen_orientation ?? "landscape",
-		mimeType: renderSettings.mimeType ?? DefaultImageMimeType,
+			renderHints.orientation ?? device?.screen_orientation ?? "landscape",
+		mimeType: renderHints.mimeType ?? DefaultImageMimeType,
 		profile,
 	};
 };
