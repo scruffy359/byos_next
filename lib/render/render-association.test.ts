@@ -19,7 +19,7 @@ import {
 	createRenderAssociationValuesForSettings,
 	getCurrentScreenAssociation,
 	getDevicePreviewScreenUrls,
-	resolveAssociationData,
+	resolveAssociationValues,
 	resolveDeviceProfile,
 } from "./render-association";
 import {
@@ -443,7 +443,7 @@ describe("resolveAssociationData — recipePreview type", () => {
 				mimeType: DefaultImageMimeType,
 			},
 		});
-		const result = await resolveAssociationData(values);
+		const result = await resolveAssociationValues(values);
 		expect(result).not.toBeNull();
 		expect(result?.userId).toBe("user-abc");
 		expect(result?.device.user_id).toBe("user-abc");
@@ -451,13 +451,13 @@ describe("resolveAssociationData — recipePreview type", () => {
 	});
 
 	it("uses configuredTimezone() for internalValues.$timezone", async () => {
-		const result = await resolveAssociationData(
+		const result = await resolveAssociationValues(
 			makeAssociationValues({
 				type: RenderAssociationType.recipePreview,
 				recipePreview: { userId: "u1" },
 			}),
 		);
-		expect(result?.internalValues.$timezone).toBe("Europe/London");
+		expect(result?.renderDataValues.$timezone).toBe("Europe/London");
 	});
 
 	it("throws when preview object is missing", async () => {
@@ -465,7 +465,7 @@ describe("resolveAssociationData — recipePreview type", () => {
 			type: RenderAssociationType.recipePreview,
 			recipePreview: undefined,
 		});
-		await expect(resolveAssociationData(values)).rejects.toThrow(
+		await expect(resolveAssociationValues(values)).rejects.toThrow(
 			"Render association entry missing 'reviewPreview'",
 		);
 	});
@@ -475,7 +475,7 @@ describe("resolveAssociationData — recipePreview type", () => {
 			type: RenderAssociationType.recipePreview,
 			recipePreview: { userId: null },
 		});
-		await expect(resolveAssociationData(values)).rejects.toThrow(
+		await expect(resolveAssociationValues(values)).rejects.toThrow(
 			"Render association preview missing user ID.",
 		);
 	});
@@ -497,13 +497,13 @@ describe("resolveAssociationData — display type", () => {
 			type: RenderAssociationType.display,
 			device: undefined,
 		});
-		await expect(resolveAssociationData(values)).rejects.toThrow(
+		await expect(resolveAssociationValues(values)).rejects.toThrow(
 			"Render association entry missing 'device'",
 		);
 	});
 
 	it("fetches device by the stored apiKey", async () => {
-		await resolveAssociationData(
+		await resolveAssociationValues(
 			makeAssociationValues({
 				type: RenderAssociationType.display,
 				device: { id: 1, apiKey: "stored-key" },
@@ -516,7 +516,7 @@ describe("resolveAssociationData — display type", () => {
 
 	it("returns null when device is not found", async () => {
 		jest.mocked(fetchDeviceByApiKey).mockResolvedValue(null);
-		const result = await resolveAssociationData(
+		const result = await resolveAssociationValues(
 			makeAssociationValues({ type: RenderAssociationType.display }),
 		);
 		expect(result).toBeNull();
@@ -526,20 +526,20 @@ describe("resolveAssociationData — display type", () => {
 		jest
 			.mocked(fetchDeviceByApiKey)
 			.mockResolvedValue(makeDevice({ user_id: null }));
-		const result = await resolveAssociationData(
+		const result = await resolveAssociationValues(
 			makeAssociationValues({ type: RenderAssociationType.display }),
 		);
 		expect(result).toBeNull();
 	});
 
 	it("returns userId, the fetched device, and device.timezone", async () => {
-		const result = await resolveAssociationData(
+		const result = await resolveAssociationValues(
 			makeAssociationValues({ type: RenderAssociationType.display }),
 		);
 		expect(result).not.toBeNull();
 		expect(result?.userId).toBe("db-user");
 		expect(result?.device).toBe(mockDevice);
-		expect(result?.internalValues.$timezone).toBe("Asia/Tokyo");
+		expect(result?.renderDataValues.$timezone).toBe("Asia/Tokyo");
 	});
 });
 

@@ -1,21 +1,14 @@
 import sharp from "sharp";
-import {
-	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH,
-} from "@/lib/recipes/constants";
-import type { DeviceProfile } from "@/lib/trmnl/device-profile";
 import { renderBmp } from "@/utils/render-bmp";
 import {
 	type RenderDeviceImageResult,
 	renderDeviceImage,
 } from "./device-image";
+import { ResolvedRenderSettings } from "./render-association-types";
 
 type RenderErrorImageOptions = {
 	message: string;
-	width?: number;
-	height?: number;
-	grayscale?: number;
-	profile?: DeviceProfile | null;
+	renderSettings: ResolvedRenderSettings;
 };
 
 function escapeXml(value: string): string {
@@ -129,13 +122,11 @@ async function renderErrorPng(message: string, width: number, height: number) {
 
 export async function renderErrorImage({
 	message,
-	width = DEFAULT_IMAGE_WIDTH,
-	height = DEFAULT_IMAGE_HEIGHT,
-	grayscale = 2,
-	profile,
+	renderSettings,
 }: RenderErrorImageOptions): Promise<RenderDeviceImageResult> {
+	const { width, height, profile } = renderSettings;
 	const png = await renderErrorPng(message, width, height);
-	if (profile && profile.model.mime_type !== "image/bmp") {
+	if (renderSettings.mimeType !== "image/bmp") {
 		return renderDeviceImage({
 			png,
 			profile: {
@@ -149,7 +140,7 @@ export async function renderErrorImage({
 		});
 	}
 	return {
-		buffer: await renderBmp(png, { width, height, grayscale }),
+		buffer: await renderBmp(png, { width, height }),
 		mime_type: "image/bmp",
 		filename_ext: "bmp",
 		size_limit_exceeded: false,

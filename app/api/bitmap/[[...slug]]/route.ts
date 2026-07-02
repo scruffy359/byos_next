@@ -17,15 +17,11 @@ import {
 	rejectOversizedImageArea,
 } from "@/lib/render/image-request";
 import {
-	resolveAssociationData,
-	resolveDeviceProfile,
+	getDefaultRenderSettings,
+	resolveAssociationValues,
 } from "@/lib/render/render-association";
 import { RenderAssociationType } from "@/lib/render/render-association-types";
-import {
-	DEFAULT_MODEL_NAME,
-	type DeviceProfile,
-	getDeviceProfile,
-} from "@/lib/trmnl/device-profile";
+import { DeviceProfile } from "@/lib/trmnl/types";
 import { FormatValue } from "@/lib/types";
 
 export async function GET(
@@ -68,10 +64,6 @@ export async function GET(
 			dataParams,
 		} = associatedValues;
 
-		logger.info(
-			`Bitmap request for: '${bitmapPath}', screen '${screenId}' with ${imageRequest.grayscaleLevels} gray levels`,
-		);
-
 		if (
 			associationType === RenderAssociationType.display &&
 			!associationDevice
@@ -81,33 +73,37 @@ export async function GET(
 		recipeSlug = screenId;
 
 		// Resolve the device owner so recipe parameters are scoped to proper user.
-		const resolvedData = await resolveAssociationData(associatedValues);
-		if (!resolvedData) {
-			throw new Error("Required data could not be resolved");
+		const resolvedValues = await resolveAssociationValues(associatedValues);
+		if (!resolvedValues) {
+			throw new Error("Required data could not be resolved.");
 		}
-		const { userId, device, internalValues } = resolvedData;
+		const {
+			userId,
+			renderSettings: resolvedRenderSettings,
+			renderDataValues,
+		} = resolvedValues;
+
+		// TODO: deprecate imageRequest
+
+		const { width, height, profile } = resolvedRenderSettings;
+
+		logger.info(
+			`Bitmap request for: '${bitmapPath}', screen '${screenId}' with ${imageRequest.grayscaleLevels} gray levels`,
+		);
 
 		// Forward cookies so browser rendering can reuse the caller's auth session.
 		const cookieHeader = req.headers.get("cookie"); // TODO: is this needed? as cookies aren't really TRMNL
 
-		const profile = await resolveDeviceProfile(device);
-
 		if (recipeSlug === "error") {
-			const imageWidth = imageRequest.width ?? profile.model.width;
-			const imageHeight = imageRequest.height ?? profile.model.height;
-			const oversized = rejectOversizedImageArea(imageWidth, imageHeight);
+			const oversized = rejectOversizedImageArea(width, height);
 			if (oversized) return oversized;
 
-			// TODO: error processing
 			const errorMessage =
 				(dataParams?.errorMessage as string) ??
 				"An unknown display error has occurred.";
 			const image = await renderErrorImage({
 				message: errorMessage,
-				width: imageWidth,
-				height: imageHeight,
-				grayscale: imageRequest.grayscaleLevels,
-				profile,
+				renderSettings: resolvedRenderSettings,
 			});
 			return new Response(new Uint8Array(image.buffer), {
 				headers: getImageResponseHeaders(image),
@@ -116,18 +112,16 @@ export async function GET(
 
 		// Profile + extension are both pinned by the URL (model and palette_id
 		// are query params), so dispatch on profile MIME alone.
-		if (profile.model.mime_type !== "image/bmp") {
-			const imageWidth = profile.model.width;
-			const imageHeight = profile.model.height;
-			const oversized = rejectOversizedImageArea(imageWidth, imageHeight);
+		if (resolvedRenderSettings.mimeType !== "image/bmp") {
+			const oversized = rejectOversizedImageArea(width, height);
 			if (oversized) return oversized;
 			const image = await renderRecipeForDevice({
 				slug: recipeSlug,
 				profile,
-				width: imageWidth,
-				height: imageHeight,
+				width,
+				height,
 				userId,
-				$timezone: internalValues.$timezone,
+				$timezone: renderDataValues.$timezone,
 				cookies: cookieHeader || undefined,
 			});
 
@@ -135,10 +129,7 @@ export async function GET(
 				logger.warn(`Failed to generate device image for ${recipeSlug}`);
 				const errorImage = await renderErrorImage({
 					message: `Could not render ${recipeSlug}`,
-					width: imageWidth,
-					height: imageHeight,
-					grayscale: imageRequest.grayscaleLevels,
-					profile,
+					renderSettings: resolvedRenderSettings,
 				});
 				return new Response(new Uint8Array(errorImage.buffer), {
 					status: 500,
@@ -163,7 +154,7 @@ export async function GET(
 			imageRequest.grayscaleLevels,
 			profile,
 			userId,
-			internalValues.$timezone,
+			renderDataValues.$timezone,
 			cookieHeader || undefined,
 		);
 
@@ -175,9 +166,7 @@ export async function GET(
 			logger.warn(`Failed to generate bitmap for ${recipeSlug}`);
 			const errorImage = await renderErrorImage({
 				message: `Could not render ${recipeSlug}`,
-				width: validWidth,
-				height: validHeight,
-				grayscale: imageRequest.grayscaleLevels,
+				renderSettings: resolvedRenderSettings,
 			});
 			return new Response(new Uint8Array(errorImage.buffer), {
 				status: 500,
@@ -193,27 +182,10 @@ export async function GET(
 		});
 	} catch (error) {
 		logger.error("Error generating image:", error);
-		const { searchParams } = new URL(req.url);
-		const imageRequest = parseImageRequest(searchParams);
-		const width =
-			imageRequest instanceof Response
-				? DEFAULT_IMAGE_WIDTH
-				: (imageRequest.width ?? DEFAULT_IMAGE_WIDTH);
-		const height =
-			imageRequest instanceof Response
-				? DEFAULT_IMAGE_HEIGHT
-				: (imageRequest.height ?? DEFAULT_IMAGE_HEIGHT);
-		const profile =
-			imageRequest instanceof Response ? null : await resolveProfileForError();
+		const renderSettings = await getDefaultRenderSettings();
 		const errorImage = await renderErrorImage({
 			message: error instanceof Error ? error.message : "Image render failed",
-			width,
-			height,
-			grayscale:
-				imageRequest instanceof Response
-					? undefined
-					: imageRequest.grayscaleLevels,
-			profile,
+			renderSettings,
 		});
 		return new Response(new Uint8Array(errorImage.buffer), {
 			status: 500,
@@ -221,10 +193,6 @@ export async function GET(
 		});
 	}
 }
-
-const resolveProfileForError = async () => {
-	return await getDeviceProfile(DEFAULT_MODEL_NAME, null);
-};
 
 function getImageResponseHeaders(image: {
 	buffer: Buffer;

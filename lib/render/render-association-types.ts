@@ -1,14 +1,10 @@
-import { Device, FormatValue } from "../types";
+import { DeviceProfile } from "../trmnl/device-profile";
+import { Device } from "../types";
 import { SupportedMimeTypes } from "./device-image-url";
 
 export type ResolvePreviewImageUrlParameters = {
 	screenId: string;
-	width: number | null;
-	height: number | null;
-	modelName: string | null;
-	paletteId: string | null;
-	orientation: string | null;
-	format: FormatValue;
+	renderSettings: AssociationRenderSettings | null;
 };
 
 export type ResolvePreviewImageUrlType = (
@@ -17,14 +13,37 @@ export type ResolvePreviewImageUrlType = (
 
 export type PlaylistScreenArray = { screen: string; duration: number }[];
 
+/**
+ * Render settings for the association.
+ * NOTE: width and height are always supplied in the device's "landscape"
+ * orientation.
+ */
 export type AssociationRenderSettings = {
+	/** An override to the model's width. */
 	width: number | null;
+	/** An override to the model's height. */
 	height: number | null;
+	/** The device model. */
 	modelName: string | null;
+	/** The device's palette identifier. */
 	paletteId: string | null;
+	/** Override to the model's orientation. */
 	orientation: string | null; // why not considered in bitmap logic?
+	/** Mime Type of output. */
 	mimeType: SupportedMimeTypes | null;
 };
+
+type RequiredNotNull<T> = {
+	[P in keyof T]: NonNullable<T[P]>;
+};
+
+/**
+ * Same as `AssociationRenderSettings`, but all values are required to
+ * by non-null and the width/height are returned with orientation will
+ * rotate original width/height if orientation is "portrait".
+ */
+export type ResolvedRenderSettings =
+	RequiredNotNull<AssociationRenderSettings> & { profile: DeviceProfile };
 
 export type FunctionGetPreviewScreenArgs = {
 	device: Device;

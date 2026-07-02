@@ -9,13 +9,17 @@ import {
 } from "@/cache-handlers/render-association-cache-handler";
 import { getCurrentUserId } from "../auth/get-user";
 import { isNoDbMode } from "../database/utils";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "../recipes/constants";
 import { ScreenIdError } from "../recipes/render/types";
 import {
 	DEFAULT_MODEL_NAME,
 	DeviceProfile,
 	getDeviceProfile,
 } from "../trmnl/device-profile";
-import { Device, DeviceDisplayMode, FormatValue, PseudoDevice } from "../types";
+import { Device, DeviceDisplayMode, FormatValue } from "../types";
 import { configuredTimezone } from "../utils";
 import {
 	convertExtensionToMimeType,
@@ -29,6 +33,7 @@ import {
 	FunctionGetPreviewScreenArgs,
 	RenderAssociationType,
 	RenderAssociationValues,
+	ResolvedRenderSettings,
 	ResolvePreviewImageUrlParameters,
 } from "./render-association-types";
 
@@ -74,12 +79,7 @@ const convertFormatToMimeType = (format: FormatValue | null) => {
 
 export async function getRecipePreviewImageUrl({
 	screenId,
-	width,
-	height,
-	modelName,
-	paletteId,
-	orientation,
-	format,
+	renderSettings,
 }: ResolvePreviewImageUrlParameters): Promise<string> {
 	"use server";
 	const noDb = isNoDbMode();
@@ -90,17 +90,20 @@ export async function getRecipePreviewImageUrl({
 		throw Error("Current user could not be determined.");
 	}
 
+	const updatedRenderSettings: AssociationRenderSettings = {
+		width: renderSettings?.width ?? null,
+		height: renderSettings?.height ?? null,
+		modelName: renderSettings?.modelName ?? null,
+		paletteId: renderSettings?.paletteId ?? null,
+		orientation: renderSettings?.orientation ?? null,
+		mimeType: renderSettings?.mimeType ?? DefaultImageMimeType,
+	};
+
+	//TODO convertFormatToMimeType(format);
 	const associationValues = await createRenderAssociationValuesForSettings({
 		type: RenderAssociationType.recipePreview,
 		screenId,
-		renderSettings: {
-			width,
-			height,
-			modelName,
-			paletteId,
-			orientation,
-			mimeType: convertFormatToMimeType(format),
-		},
+		renderSettings: updatedRenderSettings,
 		recipePreview: {
 			userId,
 		},
@@ -352,15 +355,18 @@ export const createRenderAssociationValuesForSettings = async ({
 	return associationValues;
 };
 
-export async function resolveAssociationData(
-	associatedValues: RenderAssociationValues,
-): Promise<{
+type ResolvedAssociationValues = {
 	userId: string;
-	device: Device;
-	internalValues: {
+	device: Device | null;
+	renderSettings: ResolvedRenderSettings;
+	renderDataValues: {
 		$timezone: string;
 	};
-} | null> {
+};
+
+export async function resolveAssociationValues(
+	associatedValues: RenderAssociationValues,
+): Promise<ResolvedAssociationValues> {
 	const {
 		type: associationType,
 		device: associationDevice,
@@ -375,24 +381,22 @@ export async function resolveAssociationData(
 		}
 
 		const { userId } = preview;
-		const { modelName, paletteId } = renderSettings;
 
 		if (!userId) {
 			throw new Error("Render association preview missing user ID.");
 		}
 
 		// create Pseudo Preview Device
-		const previewDevice = getPseudoPreviewDevice({
-			userId,
-			modelName,
-			paletteId,
-			//
-			$timezone: null,
+		const resolvedRenderSettings = await getResolvedRenderSettings({
+			renderSettings,
+			device: null,
 		});
+
 		return {
 			userId,
-			device: previewDevice,
-			internalValues: {
+			device: null,
+			renderSettings: resolvedRenderSettings,
+			renderDataValues: {
 				$timezone: configuredTimezone(),
 			},
 		};
@@ -407,20 +411,24 @@ export async function resolveAssociationData(
 	});
 
 	if (!device) {
-		console.error("Device not found with apiKey.");
-		return null;
+		throw new Error("Device not found with apiKey.");
 	}
 
 	if (!device.user_id) {
-		console.error("Device is not assigned a user ID.");
-		return null;
+		throw new Error("Device is not assigned a user ID.");
 	}
+
+	const resolvedRenderSettings = await getResolvedRenderSettings({
+		renderSettings,
+		device,
+	});
 
 	return {
 		userId: device.user_id,
 		device,
-		internalValues: {
-			$timezone: device.timezone,
+		renderSettings: resolvedRenderSettings,
+		renderDataValues: {
+			$timezone: device.timezone ?? configuredTimezone(),
 		},
 	};
 }
@@ -435,27 +443,49 @@ export async function resolveDeviceProfile(
 	return getDeviceProfile(modelName, paletteId);
 }
 
-const PseudoDeviceId = -1;
-
-const getPseudoPreviewDevice = ({
-	userId,
-	modelName,
-	paletteId,
-	$timezone,
-}: {
-	userId: string;
-	modelName: string | null;
-	paletteId: string | null;
-	$timezone: string | null;
-}): Device => {
-	const result: PseudoDevice = {
-		id: PseudoDeviceId,
-		name: "PseudoPreviewDevice",
-		friendly_id: "pseudo-preview-device",
-		user_id: userId,
-		model: modelName,
-		palette_id: paletteId,
-		timezone: $timezone ?? configuredTimezone(),
+export const getDefaultRenderSettings =
+	async (): Promise<ResolvedRenderSettings> => {
+		return getResolvedRenderSettings({
+			renderSettings: {
+				width: null,
+				height: null,
+				modelName: DEFAULT_MODEL_NAME,
+				paletteId: null,
+				orientation: "landscape",
+				mimeType: DefaultImageMimeType,
+			},
+			device: null,
+		});
 	};
-	return result as Device;
+
+const getResolvedRenderSettings = async ({
+	renderSettings,
+	device,
+}: {
+	renderSettings: AssociationRenderSettings;
+	device: Device | null;
+}): Promise<ResolvedRenderSettings> => {
+	const resolvedModelName = renderSettings.mimeType ?? DEFAULT_MODEL_NAME;
+	const resolvedPaletteId = renderSettings.paletteId;
+
+	const profile = await getDeviceProfile(resolvedModelName, resolvedPaletteId);
+
+	return {
+		width:
+			renderSettings.width ??
+			device?.screen_width ??
+			profile.model.width ??
+			DEFAULT_IMAGE_WIDTH,
+		height:
+			renderSettings.height ??
+			device?.screen_height ??
+			profile.model.height ??
+			DEFAULT_IMAGE_HEIGHT,
+		modelName: resolvedModelName,
+		paletteId: resolvedPaletteId ?? "", // TODO allow null?
+		orientation:
+			renderSettings.orientation ?? device?.screen_orientation ?? "landscape",
+		mimeType: renderSettings.mimeType ?? DefaultImageMimeType,
+		profile,
+	};
 };

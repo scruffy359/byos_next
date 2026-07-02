@@ -190,9 +190,12 @@ export default function DeviceView({
 			device,
 			playlistScreens,
 			renderSettings: {
+				width: deviceWidth,
+				height: deviceHeight,
 				modelName: selectedModel?.name,
 				paletteId: selectedPalette?.id ?? null,
 				orientation,
+				mimeType: null,
 			},
 		});
 	}, [
@@ -202,6 +205,8 @@ export default function DeviceView({
 		orientation,
 		selectedModel,
 		selectedPalette,
+		deviceWidth,
+		deviceHeight,
 	]);
 
 	if (!screenUrls || screenUrls.length < 1) {

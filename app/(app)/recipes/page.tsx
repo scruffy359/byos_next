@@ -9,8 +9,22 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import { DefaultImageMimeType } from "@/lib/render/device-image-url";
+import { getRecipePreviewImageUrl } from "@/lib/render/render-association";
 
-const RecipeCard = ({ recipe }: { recipe: CatalogRecipe }) => {
+const RecipeCard = async ({ recipe }: { recipe: CatalogRecipe }) => {
+	const imageUrl = await getRecipePreviewImageUrl({
+		screenId: recipe.slug,
+		renderSettings: {
+			width: DEFAULT_IMAGE_WIDTH,
+			height: DEFAULT_IMAGE_HEIGHT,
+			modelName: null,
+			paletteId: null,
+			orientation: "landscape",
+			mimeType: DefaultImageMimeType,
+		},
+	});
+
 	return (
 		<Link
 			key={recipe.slug}
@@ -24,9 +38,9 @@ const RecipeCard = ({ recipe }: { recipe: CatalogRecipe }) => {
 				}}
 			>
 				<picture>
-					<source srcSet={`/api/bitmap/${recipe.slug}.bmp`} type="image/bmp" />
+					<source srcSet={imageUrl} type="image/bmp" />
 					<img
-						src={`/api/bitmap/${recipe.slug}.bmp`}
+						src={imageUrl}
 						alt={`${recipe.name} preview`}
 						width={DEFAULT_IMAGE_WIDTH}
 						height={DEFAULT_IMAGE_HEIGHT}

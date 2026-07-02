@@ -11,16 +11,18 @@ import {
 import { logger } from "@/lib/recipes/logger";
 import { renderRecipeToImage } from "@/lib/recipes/recipe-renderer";
 import { renderDeviceImage } from "@/lib/render/device-image";
-import { stripImageExtension } from "@/lib/render/device-image-url";
+import {
+	SupportedMimeTypes,
+	stripImageExtension,
+} from "@/lib/render/device-image-url";
 import { renderErrorImage } from "@/lib/render/error-image";
 import { parseImageRequest } from "@/lib/render/image-request";
 import {
-	resolveAssociationData,
-	resolveDeviceProfile,
+	getDefaultRenderSettings,
+	resolveAssociationValues,
 } from "@/lib/render/render-association";
 import { RenderAssociationType } from "@/lib/render/render-association-types";
 import { FormatValue } from "@/lib/types";
-import { configuredTimezone } from "@/lib/utils";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 export async function GET(
@@ -35,10 +37,7 @@ export async function GET(
 		const { ready } = await checkDbConnection();
 		if (!ready) {
 			logger.error("Database not available for mixup rendering");
-			const image = await renderErrorImage({
-				message: "Database not available",
-			});
-			return imageResponse(image, 503);
+			throw new Error("Database not available");
 		}
 
 		const { searchParams } = new URL(req.url);
@@ -61,23 +60,25 @@ export async function GET(
 		const mixupId = screenId;
 
 		// Resolve the device owner so recipe parameters are scoped to proper user.
-		const resolvedData = await resolveAssociationData(associatedValues);
-		if (!resolvedData) {
+		const resolvedAssociationValues =
+			await resolveAssociationValues(associatedValues);
+		if (!resolvedAssociationValues) {
 			throw new Error(
 				"Required render association data could not be resolved.",
 			);
 		}
-		const { userId, device } = resolvedData;
+		const { userId, device, renderSettings, renderDataValues } =
+			resolvedAssociationValues;
 
 		if (!userId) {
 			return new Response("Access token is required", { status: 401 });
 		}
 
-		const profile = await resolveDeviceProfile(device);
+		const { width, height } = renderSettings;
 
-		const $timezone = searchParams.get("$timezone") || configuredTimezone();
-		const width = imageRequest.width ?? DEFAULT_IMAGE_WIDTH;
-		const height = imageRequest.height ?? DEFAULT_IMAGE_HEIGHT;
+		//		const profile = await resolveDeviceProfile(device);
+
+		const $timezone = renderDataValues.$timezone;
 		const grayscaleLevels = imageRequest.grayscaleLevels;
 
 		// Two auth paths:
@@ -159,10 +160,11 @@ export async function GET(
 			userId,
 			$timezone,
 		);
+
 		// Dispatch on profile MIME — model/palette_id are URL query params, so
 		// the same URL always picks the same renderer.
 		const image =
-			profile.model.mime_type === "image/bmp"
+			associatedValues.renderSettings.mimeType === SupportedMimeTypes.ImageBmp
 				? {
 						buffer: await renderBmp(compositedPng, {
 							ditheringMethod: DitheringMethod.ATKINSON,
@@ -170,18 +172,23 @@ export async function GET(
 							height,
 							grayscale: grayscaleLevels,
 						}),
-						mime_type: "image/bmp",
+						mime_type: SupportedMimeTypes.ImageBmp,
 						size_limit_exceeded: false,
 					}
-				: await renderDeviceImage({ png: compositedPng, profile });
+				: await renderDeviceImage({
+						png: compositedPng,
+						profile: renderSettings.profile,
+					});
 
 		return imageResponse(image);
 	} catch (error) {
 		logger.error("Error generating mixup image:", error);
+		const renderSettings = await getDefaultRenderSettings();
 		const message =
 			error instanceof Error ? error.message : "Error generating image";
 		const image = await renderErrorImage({
 			message,
+			renderSettings,
 		});
 		return imageResponse(image, 500);
 	}
